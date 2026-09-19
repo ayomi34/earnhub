@@ -261,7 +261,7 @@ function friendlyAuthError(message: string): string {
 }
 
 export async function register(input: {
-  fullName: string; email: string; phone: string; password: string; referralCode?: string;
+  fullName: string; email: string; phone: string; password: string; referralCode: string;
 }) {
   const email = input.email.trim().toLowerCase();
   if (input.fullName.trim().length < 3) throw new SvcError("Please enter your full name.");
@@ -269,6 +269,19 @@ export async function register(input: {
   if (!/^(\+?234|0)\d{10}$/.test(input.phone.replace(/\s/g, "")))
     throw new SvcError("Enter a valid Nigerian phone number (e.g. 08012345678).");
   if (input.password.length < 8) throw new SvcError("Password must be at least 8 characters.");
+
+  /* Registration is referral-only: a valid code is mandatory and verified
+   * against the database (RPC, security-definer) before the account is
+   * created, so typos never produce orphan accounts. */
+  const referralCode = input.referralCode.trim().toUpperCase();
+  if (!referralCode)
+    throw new SvcError("A referral code is required to register. Ask the member who invited you for theirs.");
+  const { data: codeValid, error: codeError } = await supabase
+    .rpc("validate_referral_code", { code: referralCode });
+  if (codeError)
+    throw new SvcError("We could not verify the referral code right now. Please try again in a moment.");
+  if (!codeValid)
+    throw new SvcError(`Referral code ${referralCode} is not valid. Check it with the member who invited you.`);
 
   const { data, error } = await supabase.auth.signUp({
     email,
@@ -278,7 +291,7 @@ export async function register(input: {
       data: {
         full_name: input.fullName.trim(),
         phone: input.phone.trim(),
-        referral_code: input.referralCode?.trim() || null,
+        referral_code: referralCode,
       },
     },
   });

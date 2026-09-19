@@ -27,7 +27,7 @@ begin
 
   if coalesce(new.raw_user_meta_data->>'referral_code', '') <> '' then
     select * into referrer from public.profiles
-    where referral_code = new.raw_user_meta_data->>'referral_code'
+    where referral_code = upper(new.raw_user_meta_data->>'referral_code')
       and id <> new.id limit 1;
     if found then
       update public.profiles set referred_by = referrer.id where id = new.id;
@@ -117,4 +117,20 @@ on conflict (id) do nothing;
 --   payout             POST {withdrawalId, action, payoutRef, note}
 --     -> re-checks ledger balance in a transaction before marking paid
 --        and inserting the withdrawal debit (source_id = withdrawal id)
+
+-- ---------- 6. Public referral-code validation (registration is code-mandatory) ----------
+-- Anonymous sign-ups must verify a referrer's code before creating an account.
+-- SECURITY DEFINER is required because RLS hides other members' profiles;
+-- the function returns only true/false — no member data is exposed.
+create or replace function public.validate_referral_code(code text)
+returns boolean
+language sql stable security definer
+set search_path = public as $$
+  select exists (
+    select 1 from public.profiles
+    where referral_code = upper(trim(coalesce(code, '')))
+  );
+$$;
+
+grant execute on function public.validate_referral_code(text) to anon, authenticated;
 -- ============================================================

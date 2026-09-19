@@ -225,23 +225,24 @@ export function Referrals() {
   const user = useUser()!;
   const stats = useData(() => getReferralStats(user.id));
   const rows = useData(() => getReferralRows(user.id));
-  const link = `${window.location.origin}${window.location.pathname}#/register?ref=${user.referralCode}`;
+  const code = user.referralCode;
 
   return (
     <div>
       <PageHead title="Referrals" sub="Single-level commissions — paid only when your referral's own task work is approved." />
       <Card className="mb-5 p-5">
-        <p className="text-[13px] font-medium text-slate-700">Your referral link</p>
-        <div className="mt-2.5 flex flex-col gap-2.5 sm:flex-row">
-          <div className="flex flex-1 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2.5">
+        <p className="text-[13px] font-medium text-slate-700">Your referral code</p>
+        <div className="mt-2.5 flex flex-col gap-2.5 sm:flex-row sm:items-center">
+          <div className="flex flex-1 items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
             <Share2 className="h-4 w-4 shrink-0 text-slate-400" />
-            <span className="truncate font-mono text-xs text-slate-600">{link}</span>
+            <span className="font-mono text-lg font-bold tracking-widest text-slate-800">{code}</span>
           </div>
-          <CopyButton text={link} label="Copy link" />
+          <CopyButton text={code} label="Copy code" />
         </div>
         <p className="mt-3 flex items-start gap-2 text-xs leading-relaxed text-slate-400">
           <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          Rate at your level: {stats.percent}% of each approved task reward. Code: <span className="font-mono font-semibold text-slate-600">{user.referralCode}</span>
+          New members must enter this code during registration — accounts cannot be created without it.
+          Your rate: {stats.percent}% of each approved task reward.
         </p>
       </Card>
 
@@ -258,8 +259,8 @@ export function Referrals() {
           <EmptyState
             icon={<Users className="h-5 w-5" />}
             title="No referrals yet"
-            sub="Share your link. When someone registers with it and activates a membership, they appear here."
-            action={<CopyButton text={link} label="Copy your link" />}
+            sub="Share your code. When someone registers with it and activates a membership, they appear here."
+            action={<CopyButton text={code} label="Copy your code" />}
           />
         ) : (
           <Table head={["Member", "Joined", "Status", "Your commission earned"]}>

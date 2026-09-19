@@ -81,18 +81,19 @@ type RegData = { fullName: string; email: string; phone: string; password: strin
 
 export function Register() {
   const { query } = useRoute();
-  const refCode = query.get("ref") || "";
+  const [refCode, setRefCode] = useState((query.get("ref") || "").toUpperCase());
   const [step, setStep] = useState(1);
   const [userId, setUserId] = useState<string | null>(null);
   const [form, setForm] = useState<RegData>({ fullName: "", email: "", phone: "", password: "", confirm: "" });
-  const [errors, setErrors] = useState<Partial<RegData>>({});
+  const [errors, setErrors] = useState<Partial<RegData> & { referralCode?: string }>({});
   const { busy, run } = useAction();
   const toast = useToast();
   const submittingRef = useRef(false);
 
   const next = async () => {
     if (submittingRef.current) return;
-    const e: Partial<RegData> = {};
+    const e: Partial<RegData> & { referralCode?: string } = {};
+    if (!refCode.trim()) e.referralCode = "Enter the referral code of the member who invited you";
     if (form.fullName.trim().length < 3) e.fullName = "Enter your full legal name";
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = "Enter a valid email";
     if (!/^(\+?234|0)\d{10}$/.test(form.phone.replace(/\s/g, ""))) e.phone = "e.g. 08012345678";
@@ -104,7 +105,7 @@ export function Register() {
     submittingRef.current = true;
     try {
       const id = await run(
-        () => register({ ...form, referralCode: refCode || undefined }),
+        () => register({ ...form, referralCode: refCode }),
         REQUIRE_EMAIL_CONFIRMATION
           ? "Account created. Check your inbox to confirm your email before payment."
           : "Account created — welcome to EarnHub!"
@@ -153,11 +154,19 @@ export function Register() {
                     <Input type="password" value={form.confirm} onChange={(e) => setForm({ ...form, confirm: e.target.value })} placeholder="Repeat password" autoComplete="new-password" />
                   </Field>
                 </div>
-                {refCode && (
-                  <p className="flex items-center gap-2 rounded-lg bg-brand-50 px-3.5 py-2.5 text-xs font-medium text-brand">
-                    <Check className="h-3.5 w-3.5" /> Referral code applied: {refCode.toUpperCase()}
-                  </p>
-                )}
+                <Field
+                  label="Referral code"
+                  error={errors.referralCode}
+                  hint="Registration is by referral only — ask the member who invited you for their code"
+                >
+                  <Input
+                    required
+                    value={refCode}
+                    onChange={(e) => setRefCode(e.target.value.toUpperCase().trim())}
+                    placeholder="e.g. EH-7K2PQX"
+                    className="font-mono uppercase tracking-widest"
+                  />
+                </Field>
                 <Button loading={busy} disabled={busy} className="w-full" onClick={next}>
                   Continue <ArrowRight className="h-4 w-4" />
                 </Button>
@@ -181,7 +190,7 @@ export function Register() {
             }}
             onSkip={async () => {
               const id = await run(
-                () => register({ ...form, referralCode: refCode || undefined }),
+                () => register({ ...form, referralCode: refCode }),
                 REQUIRE_EMAIL_CONFIRMATION
                   ? "Account created — verify your email to continue."
                   : "Account created — welcome to EarnHub!"
@@ -215,7 +224,7 @@ function Step2Levels({ form, refCode, busy, onBack, onDone, onSkip, run }: {
   const beginPayment = async (level: MembershipLevel) => {
     let id = userId;
     if (!id) {
-      id = await run(() => register({ ...form, referralCode: refCode || undefined }), "Account created.");
+      id = await run(() => register({ ...form, referralCode: refCode }), "Account created.");
       if (!id) return;
       setUserId(id);
       navigate(getSessionUser()?.emailVerified ? "/app" : "/verify");
