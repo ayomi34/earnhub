@@ -277,7 +277,7 @@ export function AdminTransactions() {
     <div>
       <PageHead title="Wallet Ledger" sub="Every credit and debit across all members — immutable and source-linked" />
       <div className="mb-4 flex flex-wrap gap-2">
-        {["all", "task_reward", "referral_bonus", "withdrawal", "refund", "adjustment"].map((t) => (
+        {["all", "task_reward", "referral_bonus", "spin_reward", "withdrawal", "refund", "adjustment"].map((t) => (
           <button key={t} onClick={() => setType(t)}
             className={`rounded-full px-3.5 py-1.5 text-xs font-medium capitalize transition-colors ${type === t ? "bg-brand text-white" : "border border-slate-200 bg-white text-slate-600 hover:border-brand"}`}>
             {t.replace("_", " ")}

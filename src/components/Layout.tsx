@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import {
   Bell, Briefcase, ClipboardList, CreditCard, Gauge, Headset, LayoutDashboard,
   LogOut, Menu, Settings2, ShieldCheck, Users, Wallet, X, Zap, Coins, Receipt,
-  ListChecks, FileText, User, Share2, Layers,
+  ListChecks, FileText, User, Share2, Layers, Disc3,
 } from "lucide-react";
 import { Link, NavItem } from "./nav";
 import { navigate, useRoute, useSettings, useUser } from "../lib/store";
@@ -136,6 +136,7 @@ function PublicFooter() {
 
 export const userNav = [
   { to: "/app", label: "Dashboard", icon: LayoutDashboard, end: true },
+  { to: "/app/spin", label: "Daily Spin", icon: Disc3 },
   { to: "/app/earn", label: "Earn", icon: Briefcase },
   { to: "/app/tasks", label: "My Tasks", icon: ClipboardList },
   { to: "/app/wallet", label: "Wallet", icon: Wallet },
@@ -152,6 +153,7 @@ export const adminNav = [
   { to: "/admin/users", label: "Users", icon: Users },
   { to: "/admin/levels", label: "Levels", icon: Layers },
   { to: "/admin/tasks", label: "Tasks", icon: ListChecks },
+  { to: "/admin/spin", label: "Daily Spin", icon: Disc3 },
   { to: "/admin/submissions", label: "Submissions", icon: ClipboardList },
   { to: "/admin/withdrawals", label: "Withdrawals", icon: Coins },
   { to: "/admin/payments", label: "Payments", icon: CreditCard },

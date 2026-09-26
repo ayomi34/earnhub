@@ -166,14 +166,14 @@ export function Transactions() {
       }));
     const wallet = getWalletTx(user.id).map((t): TxRow => ({
       id: t.id, date: t.createdAt,
-      type: ({ task_reward: "Task Reward", referral_bonus: "Referral Bonus", withdrawal: "Withdrawal", refund: "Refund", adjustment: "Adjustment" } as const)[t.type],
+      type: ({ task_reward: "Task Reward", referral_bonus: "Referral Bonus", withdrawal: "Withdrawal", refund: "Refund", adjustment: "Adjustment", spin_reward: "Spin Reward" } as const)[t.type],
       desc: t.description, amount: t.amount, credit: t.direction === "credit",
       status: t.status, reference: t.reference,
     }));
     return [...payments, ...wallet].sort((a, b) => b.date - a.date);
   });
 
-  const types = ["All", "Membership Payment", "Task Reward", "Referral Bonus", "Withdrawal", "Refund", "Adjustment"];
+  const types = ["All", "Membership Payment", "Task Reward", "Referral Bonus", "Spin Reward", "Withdrawal", "Refund", "Adjustment"];
   const filtered = useMemo(
     () => (filter === "All" ? rows : rows.filter((r) => r.type === filter)),
     [rows, filter]

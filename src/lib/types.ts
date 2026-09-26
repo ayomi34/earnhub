@@ -5,6 +5,7 @@ export type UserStatus = "active" | "suspended";
 export type TxType =
   | "task_reward"
   | "referral_bonus"
+  | "spin_reward"
   | "withdrawal"
   | "refund"
   | "adjustment";
@@ -178,6 +179,47 @@ export interface SupportTicket {
   createdAt: number;
 }
 
+/* ================= DAILY SPIN ================= */
+
+export type SpinRewardType = "cash" | "bonus_task" | "none";
+export type SpinStatus = "pending" | "approved" | "rejected" | "none";
+
+export interface SpinSegment {
+  label: string; // e.g. "₦50", "Bonus Task", "Try Again"
+  type: SpinRewardType; // cash | bonus_task | none
+  amount: number; // naira, cash segments only
+  weight: number; // relative probability (weight / totalWeight)
+  color: string; // hex, e.g. "#10b981"
+}
+
+export interface SpinConfig {
+  enabled: boolean;
+  requireVerified: boolean;
+  requireMembership: boolean;
+  dailyBudget: number; // max total cash awarded per calendar day
+  segments: SpinSegment[];
+}
+
+export interface SpinReward {
+  id: string;
+  userId: string;
+  segmentIndex: number;
+  label: string;
+  rewardType: SpinRewardType;
+  amount: number;
+  status: SpinStatus; // cash rewards start pending until an admin approves
+  reference: string;
+  ip: string | null;
+  userAgent: string | null;
+  createdAt: number;
+}
+
+export interface SpinWinner {
+  winner: string; // anonymized, e.g. "M*** A."
+  amount: number;
+  wonAt: number;
+}
+
 export interface Settings {
   platformName: string;
   supportEmail: string;
@@ -187,6 +229,7 @@ export interface Settings {
   referralPercentDefault: number;
   paystackPublicKey: string;
   paymentMode: "live";
+  spin: SpinConfig;
 }
 
 export interface AuditLog {
@@ -211,6 +254,8 @@ export interface DB {
   notifications: Notification[];
   tickets: SupportTicket[];
   audit: AuditLog[];
+  spins: SpinReward[];
+  spinWinners: SpinWinner[];
   settings: Settings;
   session: { userId: string } | null;
 }

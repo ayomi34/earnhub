@@ -9,11 +9,13 @@ import {
 import { Login, Register, VerifyEmail, Forgot, ResetPassword } from "./pages/auth";
 import { Dashboard, Earn, MyTasks } from "./pages/user";
 import { WalletPage, Transactions, Referrals, MembershipPage } from "./pages/account";
+import { SpinPage } from "./pages/spin";
 import { Profile, Notifications, Support } from "./pages/misc";
 import { AdminOverview, AdminUsers, AdminLevels, AdminTasks } from "./pages/admin";
 import {
   AdminSubmissions, AdminWithdrawals, AdminPayments, AdminTransactions, AdminSettings, AdminAudit,
 } from "./pages/adminFin";
+import { AdminSpin } from "./pages/adminSpin";
 import { Button } from "./components/ui";
 
 function useScrollTop(path: string) {
@@ -95,6 +97,7 @@ export default function App() {
   /* ---------- user app ---------- */
   const userPages: Record<string, React.ReactNode> = {
     "/app": <Dashboard />,
+    "/app/spin": <SpinPage />,
     "/app/earn": <Earn />,
     "/app/tasks": <MyTasks />,
     "/app/wallet": <WalletPage />,
@@ -124,6 +127,7 @@ export default function App() {
     "/admin/payments": <AdminPayments />,
     "/admin/transactions": <AdminTransactions />,
     "/admin/settings": <AdminSettings />,
+    "/admin/spin": <AdminSpin />,
     "/admin/audit": <AdminAudit />,
   };
   if (p in adminPages) {

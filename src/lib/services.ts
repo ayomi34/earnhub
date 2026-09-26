@@ -1,9 +1,9 @@
-import { read, update, uid, genRef } from "./db";
+import { read, update, uid, genRef, DEFAULT_SPIN_CONFIG } from "./db";
 import { supabase, REQUIRE_EMAIL_CONFIRMATION } from "./supabase";
 import type {
   Balances, MembershipLevel, Notification, Payment, Profile, Settings,
   SupportTicket, Task, TaskSubmission, Withdrawal, WalletTx,
-  Referral, AuditLog, Membership,
+  Referral, AuditLog, Membership, SpinConfig, SpinReward, SpinRewardType, SpinWinner,
 } from "./types";
 
 /* EarnHub service layer — Supabase is the single source of truth.
@@ -158,6 +158,149 @@ function mapAudit(row: any): AuditLog {
   };
 }
 
+function mapSpin(row: any): SpinReward {
+  return {
+    id: row.id, userId: row.user_id, segmentIndex: Number(row.segment_index),
+    label: row.label, rewardType: (["cash", "bonus_task", "none"].includes(row.reward_type) ? row.reward_type : "none") as SpinRewardType,
+    amount: Number(row.amount || 0), status: row.status || "none",
+    reference: row.reference, ip: row.ip ?? null, userAgent: row.user_agent ?? null,
+    createdAt: new Date(row.created_at || Date.now()).getTime(),
+  };
+}
+
+/** Normalises whatever is in platform_settings.payload.spin into a safe,
+ *  complete SpinConfig (invalid rows fall back to the defaults). */
+function normalizeSpinConfig(raw: any): SpinConfig {
+  const d = DEFAULT_SPIN_CONFIG;
+  const normalizedSegments = (Array.isArray(raw?.segments) ? raw.segments : d.segments)
+    .filter((s: any) => s && String(s.label ?? "").trim())
+    .map((s: any) => {
+      const amount = Number(s.amount ?? 0);
+      const weight = Number(s.weight ?? 1);
+      return {
+        label: String(s.label).trim(),
+        type: (["cash", "bonus_task", "none"].includes(s.type) ? s.type : "none") as SpinRewardType,
+        amount: Number.isFinite(amount) && amount >= 0 ? Math.floor(amount) : 0,
+        weight: Number.isFinite(weight) && weight >= 1 ? Math.floor(weight) : 1,
+        color: /^#[0-9a-fA-F]{6}$/.test(String(s.color ?? "")) ? String(s.color) : "#10b981",
+      };
+    })
+    .slice(0, 12);
+  const budget = Number(raw?.dailyBudget ?? d.dailyBudget);
+  return {
+    enabled: typeof raw?.enabled === "boolean" ? raw.enabled : d.enabled,
+    requireVerified: typeof raw?.requireVerified === "boolean" ? raw.requireVerified : d.requireVerified,
+    requireMembership: typeof raw?.requireMembership === "boolean" ? raw.requireMembership : d.requireMembership,
+    dailyBudget: Number.isFinite(budget) && budget >= 0 ? Math.floor(budget) : d.dailyBudget,
+    segments: normalizedSegments.length >= 2 ? normalizedSegments : d.segments,
+  };
+}
+
+/* ================= DAILY SPIN ================= */
+
+export function getSpinConfig(): SpinConfig {
+  return normalizeSpinConfig(read().settings.spin);
+}
+
+export function getMySpins(userId: string): SpinReward[] {
+  return read().spins
+    .filter((s) => s.userId === userId)
+    .sort((a, b) => b.createdAt - a.createdAt);
+}
+
+/** Most recent spin, if it happened within the last 24h. */
+export function getLastSpin(userId: string): SpinReward | null {
+  const last = getMySpins(userId)[0];
+  if (!last) return null;
+  return Date.now() - last.createdAt < 24 * 60 * 60 * 1000 ? last : null;
+}
+
+/** Anonymized recent cash winners (maskName-style). */
+export function getRecentWinners(): SpinWinner[] {
+  return read().spinWinners;
+}
+
+export interface SpinOutcome {
+  spin: SpinReward;
+  nextSpinAt: number;
+}
+
+/** Calls the daily-spin edge function, which has already determined the
+ *  winning segment server-side. The caller only animates the result. */
+export async function spinWheel(userId: string): Promise<SpinOutcome> {
+  let data: any;
+  let error: any;
+  try {
+    ({ data, error } = await supabase.functions.invoke("daily-spin", { body: {} }));
+  } catch (e: any) {
+    // supabase-js throws FunctionsFetchError ("Failed to send a request")
+    // when the function URL is unreachable — i.e. the function is not
+    // deployed, the project ref/URL is wrong, or the network blocked it.
+    console.error("[daily-spin] fetch failed:", e);
+    throw new SvcError(
+      "Cannot reach the spin server (function not deployed or unreachable). " +
+        "Run: supabase functions deploy daily-spin — then check Dashboard > Edge Functions > daily-spin > Logs."
+    );
+  }
+  if (error) {
+    console.error("[daily-spin] invoke error:", error);
+    const ctx: any = (error as any)?.context;
+    let serverMsg = "";
+    try {
+      // When the function responded with non-2xx JSON, it sits here.
+      const ctxJson = ctx && typeof ctx.json === "function" ? await ctx.json().catch(() => null) : ctx;
+      serverMsg = (ctxJson as any)?.error || (typeof ctxJson === "string" ? ctxJson : "");
+    } catch { /* ignore */ }
+    const msg = serverMsg || (error as any)?.message || "Spin failed";
+    throw new SvcError(String(msg));
+  }
+  if (!data?.spin) throw new SvcError("Spin failed — please try again.");
+  const spin = mapSpin(data.spin);
+
+  update((db) => {
+    db.spins = [spin, ...db.spins.filter((s) => s.id !== spin.id)];
+    if (data.walletTx) {
+      const tx = mapWalletTx(data.walletTx);
+      const existing = db.walletTx.findIndex((t) => t.id === tx.id);
+      if (existing >= 0) db.walletTx[existing] = tx;
+      else db.walletTx.unshift(tx);
+    }
+    db.session = { userId };
+  });
+
+  // notification refresh happens on next hydrate; keep it lightweight here
+  return { spin, nextSpinAt: new Date(data.nextSpinAt || Date.now() + 86_400_000).getTime() };
+}
+
+/** Anonymized winners — masked in Postgres via recent_spin_winners(). */
+export async function refreshSpinWinners() {
+  const { data, error } = await supabase.rpc("recent_spin_winners");
+  if (error || !Array.isArray(data)) return;
+  update((db) => {
+    db.spinWinners = data.map((row: any) => ({
+      winner: String(row.winner ?? "—"),
+      amount: Number(row.amount || 0),
+      wonAt: new Date(row.won_at || Date.now()).getTime(),
+    }));
+  });
+}
+
+/* ================= SPIN ADMIN ================= */
+
+export async function adminSaveSpinConfig(adminId: string, config: SpinConfig) {
+  requireAdmin(adminId);
+  await invokeAdmin("save-spin-settings", { config });
+  await hydrateAll();
+}
+
+export async function adminSetSpinReward(
+  adminId: string, spinId: string, decision: "approve" | "reject", note: string
+) {
+  requireAdmin(adminId);
+  await invokeAdmin("set-spin-reward", { spinId, decision, note });
+  await hydrateAll();
+}
+
 /* ================= HYDRATION (Supabase -> cache) ================= */
 
 export async function hydrateContentFromSupabase() {
@@ -170,7 +313,7 @@ export async function hydrateContentFromSupabase() {
     if (Array.isArray(levels.data)) db.levels = levels.data.map(mapLevel);
     if (Array.isArray(tasks.data)) db.tasks = tasks.data.map(mapTask);
     if (settingsRes.data?.payload) {
-      db.settings = { ...db.settings, ...settingsRes.data.payload };
+      db.settings = { ...db.settings, ...settingsRes.data.payload, spin: normalizeSpinConfig((settingsRes.data.payload as any).spin) };
     }
   });
 }
@@ -195,11 +338,13 @@ export async function hydrateAll() {
       db.notifications = [];
       db.tickets = [];
       db.audit = [];
+      db.spins = [];
+      db.spinWinners = [];
     });
     return;
   }
 
-  const [profiles, payments, memberships, withdrawals, walletTx, submissions, referrals, notifications, tickets, audit] =
+  const [profiles, payments, memberships, withdrawals, walletTx, submissions, referrals, notifications, tickets, audit, spins] =
     await Promise.all([
       supabase.from("profiles").select("*").order("created_at", { ascending: false }),
       supabase.from("payments").select("*").order("created_at", { ascending: false }),
@@ -211,6 +356,7 @@ export async function hydrateAll() {
       supabase.from("notifications").select("*").order("created_at", { ascending: false }),
       supabase.from("support_tickets").select("*").order("created_at", { ascending: false }),
       supabase.from("audit_logs").select("*").order("created_at", { ascending: false }),
+      supabase.from("spins").select("*").order("created_at", { ascending: false }),
     ]);
 
   update((db) => {
@@ -229,6 +375,7 @@ export async function hydrateAll() {
     if (Array.isArray(notifications.data)) db.notifications = notifications.data.map(mapNotification);
     if (Array.isArray(tickets.data)) db.tickets = tickets.data.map(mapTicket);
     if (Array.isArray(audit.data)) db.audit = audit.data.map(mapAudit);
+    if (Array.isArray(spins.data)) db.spins = spins.data.map(mapSpin);
   });
 }
 
@@ -338,6 +485,8 @@ export async function logout() {
     db.notifications = [];
     db.tickets = [];
     db.audit = [];
+    db.spins = [];
+    db.spinWinners = [];
   });
 }
 
@@ -521,9 +670,14 @@ export function getBalances(userId: string): Balances {
     .filter((s) => s.userId === userId && s.status === "submitted")
     .reduce((s, sub) => s + (db.tasks.find((t) => t.id === sub.taskId)?.reward || 0), 0);
 
+  // pending spin rewards await admin approval before becoming available
+  const spinPending = db.spins
+    .filter((s) => s.userId === userId && s.rewardType === "cash" && s.status === "pending")
+    .reduce((s, spin) => s + spin.amount, 0);
+
   return {
     available: Math.max(0, approvedCredits - approvedDebits - holds),
-    pending,
+    pending: pending + spinPending,
     totalEarned: approvedCredits,
     totalWithdrawn: approvedDebits,
     todayEarned: today,

@@ -340,6 +340,79 @@ Deno.serve(async (req) => {
       return json({ ok: true });
     }
 
+    /* ---------------- daily spin ---------------- */
+    case "save-spin-settings": {
+      const cfg = body.config ?? {};
+      if (typeof cfg.enabled !== "boolean") return json({ error: "Invalid spin toggle." }, 400);
+      if (typeof cfg.requireVerified !== "boolean" || typeof cfg.requireMembership !== "boolean")
+        return json({ error: "Invalid eligibility settings." }, 400);
+      const budget = Math.floor(Number(cfg.dailyBudget));
+      if (!Number.isFinite(budget) || budget < 0) return json({ error: "Daily budget must be zero or more." }, 400);
+      const segs: any[] = Array.isArray(cfg.segments) ? cfg.segments : [];
+      if (segs.length < 2 || segs.length > 12) return json({ error: "The wheel needs between 2 and 12 segments." }, 400);
+      for (const seg of segs) {
+        if (!String(seg.label ?? "").trim() || String(seg.label).trim().length > 24)
+          return json({ error: "Every segment needs a label of at most 24 characters." }, 400);
+        if (!["cash", "bonus_task", "none"].includes(seg.type)) return json({ error: "Invalid segment type." }, 400);
+        const amount = Math.floor(Number(seg.amount || 0));
+        if (!Number.isFinite(amount) || amount < 0 || (seg.type === "cash" && amount < 1))
+          return json({ error: `Cash segment "${seg.label}" needs an amount of at least ₦1.` }, 400);
+        const weight = Number(seg.weight);
+        if (!Number.isFinite(weight) || weight < 1 || weight > 1000)
+          return json({ error: `Segment "${seg.label}" needs a probability weight between 1 and 1000.` }, 400);
+        if (!/^#[0-9a-fA-F]{6}$/.test(String(seg.color ?? "")))
+          return json({ error: `Segment "${seg.label}" needs a valid colour.` }, 400);
+      }
+      const config = {
+        enabled: cfg.enabled,
+        requireVerified: cfg.requireVerified,
+        requireMembership: cfg.requireMembership,
+        dailyBudget: budget,
+        segments: segs.map((s) => ({
+          label: String(s.label).trim(),
+          type: s.type,
+          amount: Math.floor(Number(s.amount || 0)),
+          weight: Number(s.weight),
+          color: String(s.color),
+        })),
+      };
+      const { data: row } = await admin.from("platform_settings").select("payload").eq("id", true).maybeSingle();
+      const payload = { ...((row?.payload as any) ?? {}), spin: config };
+      const { error } = await admin.from("platform_settings").upsert({
+        id: true, payload, updated_at: new Date().toISOString(),
+      });
+      if (error) return json({ error: error.message }, 500);
+      await audit("spin.settings", `${config.segments.length} segments · budget ₦${budget.toLocaleString()}`);
+      return json({ ok: true, config });
+    }
+
+    case "set-spin-reward": {
+      const { spinId, decision, note = "" } = body;
+      if (!["approve", "reject"].includes(decision)) return json({ error: "Invalid decision." }, 400);
+      if (decision === "reject" && String(note).trim().length < 5)
+        return json({ error: "Provide a reason for rejecting this reward." }, 400);
+      const { data: spin } = await admin.from("spins").select("*").eq("id", spinId).maybeSingle();
+      if (!spin) return json({ error: "Spin not found." }, 404);
+      if (spin.reward_type !== "cash" || spin.status !== "pending")
+        return json({ error: "Only pending cash rewards can be reviewed." }, 400);
+      const newStatus = decision === "approve" ? "approved" : "rejected";
+      const { error: spinErr } = await admin.from("spins").update({ status: newStatus }).eq("id", spinId);
+      if (spinErr) return json({ error: spinErr.message }, 500);
+      const { error: txErr } = await admin.from("wallet_transactions")
+        .update({ status: newStatus }).eq("source_id", spinId);
+      if (txErr) return json({ error: txErr.message }, 500);
+      await admin.from("notifications").insert({
+        user_id: spin.user_id,
+        type: "system",
+        title: decision === "approve" ? "Spin reward approved" : "Spin reward declined",
+        body: decision === "approve"
+          ? `Your daily spin reward of ₦${Number(spin.amount).toLocaleString()} has been approved and credited to your balance.`
+          : `Your daily spin reward of ₦${Number(spin.amount).toLocaleString()} was declined: ${String(note).trim()}`,
+      });
+      await audit(`spin.reward.${decision}`, `${spin.reference} — ₦${Number(spin.amount).toLocaleString()}`);
+      return json({ ok: true });
+    }
+
     default:
       return json({ error: "Unknown action" }, 400);
   }

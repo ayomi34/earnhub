@@ -152,7 +152,7 @@ alter table public.profiles
 create table public.wallet_transactions (
   id          uuid primary key default gen_random_uuid(),
   user_id     uuid not null references public.profiles(id),
-  type        text not null check (type in ('task_reward','referral_bonus','withdrawal','refund','adjustment')),
+  type        text not null check (type in ('task_reward','referral_bonus','withdrawal','refund','adjustment','spin_reward')),
   direction   text not null check (direction in ('credit','debit')),
   amount      integer not null check (amount > 0),
   status      text not null default 'approved' check (status in ('pending','approved','rejected')),
@@ -234,6 +234,52 @@ create table public.referrals (
   earned      integer not null default 0,
   created_at  timestamptz not null default now()
 );
+
+-- ---------- daily spin ----------
+-- Results are determined ONLY by the daily-spin edge function (service
+-- role); clients may read their own rows. Cash rewards start pending and
+-- are credited to the wallet only after admin approval.
+create table public.spins (
+  id            uuid primary key default gen_random_uuid(),
+  user_id       uuid not null references public.profiles(id),
+  segment_index integer not null check (segment_index >= 0),
+  label         text not null,
+  reward_type   text not null check (reward_type in ('cash','bonus_task','none')),
+  amount        integer not null default 0 check (amount >= 0),
+  status        text not null default 'pending'
+                check (status in ('pending','approved','rejected','none')),
+  reference     text not null unique,
+  ip            text,
+  user_agent    text,
+  created_at    timestamptz not null default now()
+);
+create index on public.spins (user_id, created_at desc);
+create index on public.spins (created_at desc);
+
+create policy "spins: self read" on public.spins for select
+  using (auth.uid() = user_id or public.is_admin());
+alter table public.spins enable row level security;
+
+-- anonymized recent winners for the spin page (names masked server-side)
+create or replace function public.recent_spin_winners()
+returns table (winner text, amount integer, won_at timestamptz)
+language sql stable security definer
+set search_path = public as $$
+  select
+    left(split_part(p.full_name, ' ', 1), 1) || '*** ' ||
+    left(split_part(p.full_name, ' ', -1), 1) || '.' as winner,
+    s.amount,
+    s.created_at
+  from (
+    select * from public.spins
+    where reward_type = 'cash' and status in ('pending','approved') and amount > 0
+    order by created_at desc
+    limit 10
+  ) s
+  join public.profiles p on p.id = s.user_id;
+$$;
+
+grant execute on function public.recent_spin_winners() to authenticated;
 
 -- ---------- notifications / support / audit / settings ----------
 create table public.notifications (
