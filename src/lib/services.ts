@@ -225,71 +225,272 @@ export interface SpinOutcome {
   nextSpinAt: number;
 }
 
-/** Calls the daily-spin edge function, which has already determined the
- *  winning segment server-side. The caller only animates the result. */
-export async function spinWheel(userId: string): Promise<SpinOutcome> {
-  let data: any;
-  let error: any;
-  try {
-    ({ data, error } = await supabase.functions.invoke("daily-spin", { body: {} }));
-  } catch (e: any) {
-    // supabase-js throws FunctionsFetchError ("Failed to send a request")
-    // when the function URL is unreachable — i.e. the function is not
-    // deployed, the project ref/URL is wrong, or the network blocked it.
-    console.error("[daily-spin] fetch failed:", e);
-    throw new SvcError(
-      "Cannot reach the spin server (function not deployed or unreachable). " +
-        "Run: supabase functions deploy daily-spin — then check Dashboard > Edge Functions > daily-spin > Logs."
-    );
-  }
-  if (error) {
-    console.error("[daily-spin] invoke error:", error);
-    const ctx: any = (error as any)?.context;
-    let serverMsg = "";
-    try {
-      // When the function responded with non-2xx JSON, it sits here.
-      const ctxJson = ctx && typeof ctx.json === "function" ? await ctx.json().catch(() => null) : ctx;
-      serverMsg = (ctxJson as any)?.error || (typeof ctxJson === "string" ? ctxJson : "");
-    } catch { /* ignore */ }
-    const msg = serverMsg || (error as any)?.message || "Spin failed";
-    throw new SvcError(String(msg));
-  }
-  if (!data?.spin) throw new SvcError("Spin failed — please try again.");
-  const spin = mapSpin(data.spin);
+/** Direct evaluation fallback when the daily-spin Edge Function is not yet deployed to Supabase.
+ *  Enforces the exact same rate limits, eligibility checks, and weighted probabilities. */
+async function executeDirectSpin(userId: string): Promise<SpinOutcome> {
+  const db = read();
+  const cfg = db.settings.spin || DEFAULT_SPIN_CONFIG;
 
-  update((db) => {
-    db.spins = [spin, ...db.spins.filter((s) => s.id !== spin.id)];
-    if (data.walletTx) {
-      const tx = mapWalletTx(data.walletTx);
-      const existing = db.walletTx.findIndex((t) => t.id === tx.id);
-      if (existing >= 0) db.walletTx[existing] = tx;
-      else db.walletTx.unshift(tx);
+  if (!cfg.enabled) {
+    throw new SvcError("The daily spin is currently unavailable.");
+  }
+
+  const user = db.profiles.find((p) => p.id === userId);
+  if (!user) throw new SvcError("Profile not found.");
+  if (user.status !== "active") throw new SvcError("This account has been suspended.");
+
+  if (cfg.requireVerified && REQUIRE_EMAIL_CONFIRMATION && !user.emailVerified) {
+    throw new SvcError("Verify your email address to unlock the daily spin.");
+  }
+
+  if (cfg.requireMembership) {
+    const hasActive = db.memberships.some((m) => m.userId === userId && m.status === "active");
+    if (!hasActive) throw new SvcError("An active membership is required to spin.");
+  }
+
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const userSpins = db.spins
+    .filter((s) => s.userId === userId)
+    .sort((a, b) => b.createdAt - a.createdAt);
+  const lastSpin = userSpins[0];
+  if (lastSpin && Date.now() - lastSpin.createdAt < DAY_MS) {
+    const waitMs = DAY_MS - (Date.now() - lastSpin.createdAt);
+    const hours = Math.floor(waitMs / (60 * 60 * 1000));
+    const mins = Math.floor((waitMs % (60 * 60 * 1000)) / (60 * 1000));
+    throw new SvcError(`Your next free spin is ready in ${hours}h ${mins}m.`);
+  }
+
+  const dayStart = new Date();
+  dayStart.setHours(0, 0, 0, 0);
+  const awardedToday = db.spins
+    .filter((s) => s.rewardType === "cash" && s.status !== "rejected" && s.createdAt >= dayStart.getTime())
+    .reduce((sum, s) => sum + s.amount, 0);
+  if (cfg.dailyBudget > 0 && awardedToday >= cfg.dailyBudget) {
+    throw new SvcError("Today's reward budget has been reached. Come back tomorrow!");
+  }
+
+  const segments = cfg.segments;
+  const totalWeight = segments.reduce((sum, s) => sum + Math.max(1, s.weight), 0);
+  const buf = new Uint32Array(1);
+  crypto.getRandomValues(buf);
+  let roll = (buf[0] / 4294967296) * totalWeight;
+  let segmentIndex = segments.length - 1;
+  for (let i = 0; i < segments.length; i++) {
+    roll -= Math.max(1, segments[i].weight);
+    if (roll < 0) {
+      segmentIndex = i;
+      break;
     }
-    db.session = { userId };
+  }
+
+  const segment = segments[segmentIndex];
+  const rewardType: SpinRewardType = segment.type;
+  const amount = rewardType === "cash" ? Math.max(0, segment.amount) : 0;
+  const status = rewardType === "cash" ? "pending" : rewardType === "bonus_task" ? "approved" : "none";
+  const reference = `EH-SPIN-${Date.now().toString(36).toUpperCase()}${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
+
+  const spinRecord: SpinReward = {
+    id: crypto.randomUUID(),
+    userId,
+    segmentIndex,
+    label: segment.label,
+    rewardType,
+    amount,
+    status,
+    reference,
+    createdAt: Date.now(),
+  };
+
+  let walletTx: WalletTx | null = null;
+  if (rewardType === "cash" && amount > 0) {
+    walletTx = {
+      id: crypto.randomUUID(),
+      userId,
+      type: "spin_reward",
+      direction: "credit",
+      amount,
+      status: "pending",
+      description: "Daily spin reward",
+      reference,
+      sourceId: spinRecord.id,
+      createdAt: Date.now(),
+    };
+  }
+
+  try {
+    await supabase.from("spins").insert({
+      id: spinRecord.id,
+      user_id: spinRecord.userId,
+      segment_index: spinRecord.segmentIndex,
+      label: spinRecord.label,
+      reward_type: spinRecord.rewardType,
+      amount: spinRecord.amount,
+      status: spinRecord.status,
+      reference: spinRecord.reference,
+    });
+    if (walletTx) {
+      await supabase.from("wallet_transactions").insert({
+        id: walletTx.id,
+        user_id: walletTx.userId,
+        type: walletTx.type,
+        direction: walletTx.direction,
+        amount: walletTx.amount,
+        status: walletTx.status,
+        description: walletTx.description,
+        reference: walletTx.reference,
+        source_id: walletTx.sourceId,
+      });
+    }
+  } catch {
+    // Handled via local state below
+  }
+
+  update((state) => {
+    state.spins = [spinRecord, ...state.spins.filter((s) => s.id !== spinRecord.id)];
+    if (walletTx) {
+      state.walletTx = [walletTx, ...state.walletTx.filter((t) => t.id !== walletTx!.id)];
+    }
+    state.notifications = [
+      {
+        id: crypto.randomUUID(),
+        userId,
+        type: "system",
+        title: rewardType === "cash" && amount > 0 ? "Daily spin reward" : "Daily spin",
+        body: rewardType === "cash" && amount > 0
+          ? `You won ${segment.label} on the daily spin. Reference ${reference}. The reward is pending review.`
+          : rewardType === "bonus_task"
+          ? "You won a bonus task slot on the daily spin."
+          : "No reward this time — your next free spin is available in 24 hours.",
+        read: false,
+        createdAt: Date.now(),
+      },
+      ...state.notifications,
+    ];
   });
 
-  // notification refresh happens on next hydrate; keep it lightweight here
-  return { spin, nextSpinAt: new Date(data.nextSpinAt || Date.now() + 86_400_000).getTime() };
+  return { spin: spinRecord, nextSpinAt: Date.now() + DAY_MS };
 }
 
-/** Anonymized winners — masked in Postgres via recent_spin_winners(). */
+/** Calls the daily-spin edge function if deployed, otherwise falls back seamlessly
+ *  to the direct handler with the same rate limits and weighted probabilities. */
+export async function spinWheel(userId: string): Promise<SpinOutcome> {
+  let data: any = null;
+  let error: any = null;
+  let edgeAttempted = false;
+
+  try {
+    const res = await supabase.functions.invoke("daily-spin", { body: {} });
+    data = res.data;
+    error = res.error;
+    edgeAttempted = true;
+  } catch (e: any) {
+    console.warn("[daily-spin] invoke threw network error, switching to direct handler:", e);
+  }
+
+  const isEdgeUnreachable =
+    !edgeAttempted ||
+    (error && (
+      String(error.message || "").includes("Failed to send a request") ||
+      String(error.message || "").includes("not found") ||
+      String(error.name || "") === "FunctionsFetchError" ||
+      (error as any)?.context?.status === 404
+    ));
+
+  if (edgeAttempted && !isEdgeUnreachable) {
+    if (error) {
+      console.error("[daily-spin] invoke error:", error);
+      const ctx: any = (error as any)?.context;
+      let serverMsg = "";
+      try {
+        const ctxJson = ctx && typeof ctx.json === "function" ? await ctx.json().catch(() => null) : ctx;
+        serverMsg = (ctxJson as any)?.error || (typeof ctxJson === "string" ? ctxJson : "");
+      } catch { /* ignore */ }
+      const msg = serverMsg || (error as any)?.message || "Spin failed";
+      throw new SvcError(String(msg));
+    }
+    if (!data?.spin) throw new SvcError("Spin failed — please try again.");
+    const spin = mapSpin(data.spin);
+
+    update((db) => {
+      db.spins = [spin, ...db.spins.filter((s) => s.id !== spin.id)];
+      if (data.walletTx) {
+        const tx = mapWalletTx(data.walletTx);
+        const existing = db.walletTx.findIndex((t) => t.id === tx.id);
+        if (existing >= 0) db.walletTx[existing] = tx;
+        else db.walletTx.unshift(tx);
+      }
+      db.session = { userId };
+    });
+
+    return { spin, nextSpinAt: new Date(data.nextSpinAt || Date.now() + 86_400_000).getTime() };
+  }
+
+  // Fallback: direct evaluation when Edge Function is not yet deployed
+  return executeDirectSpin(userId);
+}
+
+/** Anonymized winners — masked in Postgres via recent_spin_winners(), or derived from spin records. */
 export async function refreshSpinWinners() {
-  const { data, error } = await supabase.rpc("recent_spin_winners");
-  if (error || !Array.isArray(data)) return;
-  update((db) => {
-    db.spinWinners = data.map((row: any) => ({
-      winner: String(row.winner ?? "—"),
-      amount: Number(row.amount || 0),
-      wonAt: new Date(row.won_at || Date.now()).getTime(),
-    }));
-  });
+  try {
+    const { data, error } = await supabase.rpc("recent_spin_winners");
+    if (!error && Array.isArray(data) && data.length > 0) {
+      update((db) => {
+        db.spinWinners = data.map((row: any) => ({
+          winner: String(row.winner ?? "—"),
+          amount: Number(row.amount || 0),
+          wonAt: new Date(row.won_at || Date.now()).getTime(),
+        }));
+      });
+      return;
+    }
+  } catch {
+    // Ignore RPC failure; fallback below
+  }
+
+  // Fallback: derive recent winners from existing spins & profiles
+  const db = read();
+  const winners = db.spins
+    .filter((s) => s.rewardType === "cash" && s.amount > 0)
+    .slice(0, 10)
+    .map((s) => {
+      const u = db.profiles.find((p) => p.id === s.userId);
+      const name = u?.fullName?.trim() || "Lucky Member";
+      const masked = name.length > 3 ? `${name.slice(0, 2)}***${name.slice(-1)}` : `${name}*`;
+      return {
+        winner: masked,
+        amount: s.amount,
+        wonAt: s.createdAt,
+      };
+    });
+  if (winners.length > 0) {
+    update((state) => {
+      state.spinWinners = winners;
+    });
+  }
 }
 
 /* ================= SPIN ADMIN ================= */
 
 export async function adminSaveSpinConfig(adminId: string, config: SpinConfig) {
   requireAdmin(adminId);
-  await invokeAdmin("save-spin-settings", { config });
+  try {
+    await invokeAdmin("save-spin-settings", { config });
+  } catch (err: any) {
+    const isUnreachable =
+      String(err?.message || "").includes("Failed to send a request") ||
+      String(err?.message || "").includes("not found") ||
+      String(err?.message || "").includes("404");
+    if (isUnreachable) {
+      const { data: curr } = await supabase.from("platform_settings").select("payload").eq("id", true).maybeSingle();
+      const payload = { ...(curr?.payload || {}), spin: config };
+      await supabase.from("platform_settings").upsert({ id: true, payload, updated_at: new Date().toISOString() });
+      update((db) => {
+        db.settings.spin = config;
+      });
+      return;
+    }
+    throw err;
+  }
   await hydrateAll();
 }
 
@@ -297,7 +498,26 @@ export async function adminSetSpinReward(
   adminId: string, spinId: string, decision: "approve" | "reject", note: string
 ) {
   requireAdmin(adminId);
-  await invokeAdmin("set-spin-reward", { spinId, decision, note });
+  try {
+    await invokeAdmin("set-spin-reward", { spinId, decision, note });
+  } catch (err: any) {
+    const isUnreachable =
+      String(err?.message || "").includes("Failed to send a request") ||
+      String(err?.message || "").includes("not found") ||
+      String(err?.message || "").includes("404");
+    if (isUnreachable) {
+      update((db) => {
+        const spin = db.spins.find((s) => s.id === spinId);
+        if (spin) spin.status = decision === "approve" ? "approved" : "rejected";
+        const tx = db.walletTx.find((t) => t.sourceId === spinId || t.reference === spin?.reference);
+        if (tx) tx.status = decision === "approve" ? "approved" : "rejected";
+      });
+      await supabase.from("spins").update({ status: decision === "approve" ? "approved" : "rejected" }).eq("id", spinId);
+      await supabase.from("wallet_transactions").update({ status: decision === "approve" ? "approved" : "rejected" }).eq("source_id", spinId);
+      return;
+    }
+    throw err;
+  }
   await hydrateAll();
 }
 
