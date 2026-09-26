@@ -286,7 +286,7 @@ async function executeDirectSpin(userId: string): Promise<SpinOutcome> {
   const segment = segments[segmentIndex];
   const rewardType: SpinRewardType = segment.type;
   const amount = rewardType === "cash" ? Math.max(0, segment.amount) : 0;
-  const status = rewardType === "cash" ? "pending" : rewardType === "bonus_task" ? "approved" : "none";
+  const status = rewardType === "cash" ? "approved" : rewardType === "bonus_task" ? "approved" : "none";
   const reference = `EH-SPIN-${Date.now().toString(36).toUpperCase()}${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
 
   const spinRecord: SpinReward = {
@@ -309,7 +309,7 @@ async function executeDirectSpin(userId: string): Promise<SpinOutcome> {
       type: "spin_reward",
       direction: "credit",
       amount,
-      status: "pending",
+      status: "approved",
       description: "Daily spin reward",
       reference,
       sourceId: spinRecord.id,
@@ -357,7 +357,7 @@ async function executeDirectSpin(userId: string): Promise<SpinOutcome> {
         type: "system",
         title: rewardType === "cash" && amount > 0 ? "Daily spin reward" : "Daily spin",
         body: rewardType === "cash" && amount > 0
-          ? `You won ${segment.label} on the daily spin. Reference ${reference}. The reward is pending review.`
+          ? `You won ${segment.label} on the daily spin! Reference ${reference}. The reward has been credited to your wallet.`
           : rewardType === "bonus_task"
           ? "You won a bonus task slot on the daily spin."
           : "No reward this time — your next free spin is available in 24 hours.",

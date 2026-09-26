@@ -131,7 +131,7 @@ Deno.serve(async (req) => {
   const segment = segments[segmentIndex];
   const rewardType = ["cash", "bonus_task", "none"].includes(segment?.type) ? segment.type : "none";
   const amount = rewardType === "cash" ? Math.max(0, Math.floor(Number(segment.amount || 0))) : 0;
-  const status = rewardType === "cash" ? "pending" : rewardType === "bonus_task" ? "approved" : "none";
+  const status = rewardType === "cash" ? "approved" : rewardType === "bonus_task" ? "approved" : "none";
   const reference = `EH-SPIN-${Date.now().toString(36).toUpperCase()}${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
 
   /* ---------- record spin (audit: ip + user agent) ---------- */
@@ -150,7 +150,7 @@ Deno.serve(async (req) => {
   }).select().single();
   if (spinError || !spin) return json({ error: spinError?.message || "Could not record the spin" }, 500);
 
-  /* ---------- cash -> pending wallet credit (idempotent via source_id) ---------- */
+  /* ---------- cash -> automatically credited to wallet ---------- */
   let walletTx = null;
   if (rewardType === "cash" && amount > 0) {
     const { data: tx } = await admin.from("wallet_transactions").insert({
@@ -158,7 +158,7 @@ Deno.serve(async (req) => {
       type: "spin_reward",
       direction: "credit",
       amount,
-      status: "pending",
+      status: "approved",
       description: "Daily spin reward",
       reference,
       source_id: spin.id,
@@ -171,7 +171,7 @@ Deno.serve(async (req) => {
     type: "system",
     title: rewardType === "cash" && amount > 0 ? "Daily spin reward" : "Daily spin",
     body: rewardType === "cash" && amount > 0
-      ? `You won ${segment.label} on the daily spin. Reference ${reference}. The reward is pending review and will be credited once approved.`
+      ? `You won ${segment.label} on the daily spin! Reference ${reference}. The reward has been credited directly to your wallet.`
       : rewardType === "bonus_task"
       ? "You won a bonus task slot on the daily spin. One extra task is available to you today."
       : "No reward this time — your next free spin is available in 24 hours.",

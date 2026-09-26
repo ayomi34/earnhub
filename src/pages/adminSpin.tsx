@@ -312,7 +312,7 @@ function HistoryTable({ spins, onReview }: {
 }) {
   return (
     <Card className="mt-5">
-      <CardHeader title="Spin history & reward approval" sub="Cash rewards stay pending until approved here" />
+      <CardHeader title="Spin history" sub="Cash rewards are credited automatically to member wallets" />
       {spins.length === 0 ? (
         <EmptyState icon={<Disc3 className="h-5 w-5" />} title="No spins yet" sub="Spins appear here with IP and device details." />
       ) : (
