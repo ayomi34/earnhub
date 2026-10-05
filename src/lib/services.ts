@@ -1190,7 +1190,14 @@ export async function invokeAdmin(action: string, payload: Record<string, unknow
   const { data, error } = await supabase.functions.invoke("admin-action", {
     body: { action, ...payload },
   });
-  if (error) throw new SvcError(error.message);
+  if (error) {
+    const context = (error as { context?: Response }).context;
+    if (context instanceof Response) {
+      const responseBody = await context.clone().json().catch(() => null) as { error?: unknown } | null;
+      if (typeof responseBody?.error === "string") throw new SvcError(responseBody.error);
+    }
+    throw new SvcError(error.message);
+  }
   if (data?.error) throw new SvcError(data.error);
   return data;
 }

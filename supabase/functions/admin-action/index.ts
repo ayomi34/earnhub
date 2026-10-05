@@ -177,14 +177,7 @@ Deno.serve(async (req) => {
       if (sub.status !== "submitted") return json({ error: "This submission has already been reviewed." }, 400);
       const { data: task } = await admin.from("tasks").select("*").eq("id", sub.task_id).maybeSingle();
       if (!task) return json({ error: "Task no longer exists." }, 404);
-
-      const { data: updated, error: upErr } = await admin.from("task_submissions").update({
-        status: approve ? "approved" : "rejected",
-        review_note: note.trim() || null,
-        reviewed_at: new Date().toISOString(),
-        reviewed_by: user.id,
-      }).eq("id", submissionId).select().single();
-      if (upErr) return json({ error: upErr.message }, 500);
+      let updated = sub;
 
       if (approve) {
         // reward credit — guarded by source_id for idempotency
@@ -198,7 +191,18 @@ Deno.serve(async (req) => {
             source_id: sub.id,
           });
           if (creditErr) return json({ error: creditErr.message }, 500);
+        }
 
+        const { data: approvedSubmission, error: upErr } = await admin.from("task_submissions").update({
+          status: "approved",
+          review_note: note.trim() || null,
+          reviewed_at: new Date().toISOString(),
+          reviewed_by: user.id,
+        }).eq("id", submissionId).select().single();
+        if (upErr) return json({ error: upErr.message }, 500);
+        updated = approvedSubmission;
+
+        if (!existingCredit) {
           // single-level referral commission on real approved work
           const { data: ref } = await admin.from("referrals")
             .select("*").eq("referred_id", sub.user_id).eq("status", "active").maybeSingle();
@@ -241,6 +245,15 @@ Deno.serve(async (req) => {
           });
         }
       } else {
+        const { data: rejectedSubmission, error: upErr } = await admin.from("task_submissions").update({
+          status: "rejected",
+          review_note: note.trim() || null,
+          reviewed_at: new Date().toISOString(),
+          reviewed_by: user.id,
+        }).eq("id", submissionId).select().single();
+        if (upErr) return json({ error: upErr.message }, 500);
+        updated = rejectedSubmission;
+
         await admin.from("notifications").insert({
           user_id: sub.user_id, type: "task",
           title: "Task submission rejected",
@@ -270,8 +283,11 @@ Deno.serve(async (req) => {
         // re-check the ledger before releasing money
         const [txsRes, holdsRes] = await Promise.all([
           admin.from("wallet_transactions").select("direction, amount, status").eq("user_id", w.user_id),
-          admin.from("withdrawals").select("amount, fee").eq("user_id", w.user_id).in("status", ["pending", "processing"]),
+          admin.from("withdrawals").select("amount, fee").eq("user_id", w.user_id)
+            .neq("id", w.id).in("status", ["pending", "processing"]),
         ]);
+        if (txsRes.error) return json({ error: txsRes.error.message }, 500);
+        if (holdsRes.error) return json({ error: holdsRes.error.message }, 500);
         const credits = (txsRes.data ?? []).filter((t) => t.status === "approved" && t.direction === "credit").reduce((s, t) => s + Number(t.amount), 0);
         const debits = (txsRes.data ?? []).filter((t) => t.status === "approved" && t.direction === "debit").reduce((s, t) => s + Number(t.amount), 0);
         const held = (holdsRes.data ?? []).reduce((s, h) => s + Number(h.amount) + Number(h.fee), 0);
