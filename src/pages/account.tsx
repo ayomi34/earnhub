@@ -81,6 +81,7 @@ function WithdrawModal({ open, onClose }: { open: boolean; onClose: () => void }
   const user = useUser()!;
   const settings = useSettings();
   const bal = useData(() => getBalances(user.id));
+  const referralStats = useData(() => getReferralStats(user.id));
   const { busy, run } = useAction();
   const [form, setForm] = useState({
     bank: user.bank?.bank || "", accountNumber: user.bank?.accountNumber || "",
@@ -89,6 +90,7 @@ function WithdrawModal({ open, onClose }: { open: boolean; onClose: () => void }
 
   const amount = Math.floor(Number(form.amount) || 0);
   const valid =
+    referralStats.active >= 3 &&
     form.bank && /^\d{10}$/.test(form.accountNumber) && form.accountName.trim().length >= 3 &&
     amount >= settings.minWithdrawal && amount + settings.withdrawalFee <= bal.available;
 
@@ -106,6 +108,9 @@ function WithdrawModal({ open, onClose }: { open: boolean; onClose: () => void }
         <span className="text-sm text-green-900">Available balance</span>
         <span className="text-lg font-bold text-green-900">{fmtN(bal.available)}</span>
       </div>
+      <p className="mb-4 text-xs text-slate-600">
+        Withdrawals require 3 active referrals who have activated a membership. Your progress: {referralStats.active}/3.
+      </p>
       <div className="space-y-4">
         <Field label="Bank">
           <Select value={form.bank} onChange={(e) => setForm({ ...form, bank: e.target.value })}>
@@ -399,7 +404,7 @@ export function MembershipPage() {
         onClose={() => setPayment(null)}
         onDone={(ok) => {
           setPayment(null);
-          if (ok) navigate("/app");
+          if (ok) navigate("/app/tasks");
         }}
       />
     </div>

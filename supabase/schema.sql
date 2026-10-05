@@ -400,13 +400,18 @@ create policy "tasks: read active"      on public.tasks for select using (status
 
 create policy "submissions: self read"  on public.task_submissions for select using (auth.uid() = user_id or public.is_admin());
 create policy "submissions: self start" on public.task_submissions for insert
-  with check (auth.uid() = user_id and status in ('in_progress','submitted'));
+  with check (auth.uid() = user_id and status in ('in_progress','submitted')
+    and exists (select 1 from public.memberships m where m.user_id = auth.uid() and m.status = 'active'));
 create policy "submissions: self submit" on public.task_submissions for update using (auth.uid() = user_id)
-  with check (auth.uid() = user_id and status in ('in_progress','submitted'));
+  with check (auth.uid() = user_id and status in ('in_progress','submitted')
+    and exists (select 1 from public.memberships m where m.user_id = auth.uid() and m.status = 'active'));
 
 create policy "withdrawals: self read"  on public.withdrawals for select using (auth.uid() = user_id or public.is_admin());
 create policy "withdrawals: self request" on public.withdrawals for insert
-  with check (auth.uid() = user_id and status = 'pending');
+  with check (auth.uid() = user_id and status = 'pending'
+    and exists (select 1 from public.memberships m where m.user_id = auth.uid() and m.status = 'active')
+    and (select count(*) from public.referrals r
+      where r.referrer_id = auth.uid() and r.status = 'active') >= 3);
 -- balance re-check + payout is atomic in the payout edge function:
 --   begin;
 --     select … for update;
@@ -437,9 +442,11 @@ create policy "feud questions: admin write" on public.feud_questions
 create policy "feud sessions: self read" on public.feud_sessions for select
   using (auth.uid() = user_id or public.is_admin());
 create policy "feud sessions: self insert" on public.feud_sessions for insert
-  with check (auth.uid() = user_id);
+  with check (auth.uid() = user_id
+    and exists (select 1 from public.memberships m where m.user_id = auth.uid() and m.status = 'active'));
 create policy "feud sessions: self update" on public.feud_sessions for update
-  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  using (auth.uid() = user_id) with check (auth.uid() = user_id
+    and exists (select 1 from public.memberships m where m.user_id = auth.uid() and m.status = 'active'));
 
 -- admin writes (levels, tasks, submissions review) go through edge functions
 -- that verify is_admin() server-side, then write with the service role and

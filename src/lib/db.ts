@@ -10,7 +10,7 @@ import type { DB, SpinConfig, FeudConfig, FeudQuestion } from "./types";
 export const DEFAULT_SPIN_CONFIG: SpinConfig = {
   enabled: true,
   requireVerified: true,
-  requireMembership: false,
+  requireMembership: true,
   dailyBudget: 50000,
   segments: [
     { label: "₦10", type: "cash", amount: 10, weight: 30, color: "#10b981" },

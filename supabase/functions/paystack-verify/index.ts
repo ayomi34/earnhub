@@ -47,7 +47,14 @@ Deno.serve(async (req) => {
   if (payment.status === "success") {
     const { data: existingMembership } = await admin
       .from("memberships").select("*").eq("payment_id", payment.id).maybeSingle();
-    return json({ payment, membership: existingMembership });
+    if (existingMembership) {
+      if (existingMembership.status === "active") {
+        const { error: linkError } = await admin.from("profiles")
+          .update({ membership_id: existingMembership.id }).eq("id", user.id);
+        if (linkError) return json({ error: linkError.message }, 500);
+      }
+      return json({ payment, membership: existingMembership });
+    }
   }
 
   // Server-side price: compare the gateway charge against the level price
@@ -88,7 +95,9 @@ Deno.serve(async (req) => {
   }).select().single();
   if (membershipError) return json({ error: membershipError.message }, 500);
 
-  await admin.from("profiles").update({ membership_id: membership.id }).eq("id", user.id);
+  const { error: linkError } = await admin.from("profiles")
+    .update({ membership_id: membership.id }).eq("id", user.id);
+  if (linkError) return json({ error: linkError.message }, 500);
 
   await admin.from("notifications").insert({
     user_id: user.id, type: "payment",

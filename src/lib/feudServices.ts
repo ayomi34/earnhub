@@ -124,6 +124,10 @@ export function canStartFeudGame(userId: string): { allowed: boolean; reason?: s
     return { allowed: false, reason: "Survey Feud has ended." };
   }
 
+  if (!getUserLevel(userId)) {
+    return { allowed: false, reason: "An active membership is required to play Survey Feud." };
+  }
+
   // Active sessions check
   const activeSession = read().feudSessions.find((s) => s.userId === userId && !s.completed);
   if (activeSession) {

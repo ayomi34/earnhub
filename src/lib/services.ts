@@ -190,7 +190,7 @@ function normalizeSpinConfig(raw: any): SpinConfig {
   return {
     enabled: typeof raw?.enabled === "boolean" ? raw.enabled : d.enabled,
     requireVerified: typeof raw?.requireVerified === "boolean" ? raw.requireVerified : d.requireVerified,
-    requireMembership: typeof raw?.requireMembership === "boolean" ? raw.requireMembership : d.requireMembership,
+    requireMembership: true,
     dailyBudget: Number.isFinite(budget) && budget >= 0 ? Math.floor(budget) : d.dailyBudget,
     segments: normalizedSegments.length >= 2 ? normalizedSegments : d.segments,
   };
@@ -243,10 +243,8 @@ async function executeDirectSpin(userId: string): Promise<SpinOutcome> {
     throw new SvcError("Verify your email address to unlock the daily spin.");
   }
 
-  if (cfg.requireMembership) {
-    const hasActive = db.memberships.some((m) => m.userId === userId && m.status === "active");
-    if (!hasActive) throw new SvcError("An active membership is required to spin.");
-  }
+  const hasActive = db.memberships.some((m) => m.userId === userId && m.status === "active");
+  if (!hasActive) throw new SvcError("An active membership is required to spin.");
 
   const DAY_MS = 24 * 60 * 60 * 1000;
   const userSpins = db.spins
@@ -871,7 +869,7 @@ export async function verifyPayment(reference: string, userId: string): Promise<
       if (existingMembership) Object.assign(existingMembership, membership);
       else db.memberships.push(membership);
       const profile = db.profiles.find((p) => p.id === userId);
-      if (profile) profile.membershipId = membership.id;
+      if (profile && membership.status === "active") profile.membershipId = membership.id;
     }
   });
   return payment;
@@ -1069,6 +1067,9 @@ export async function requestWithdrawal(
   const user = read().profiles.find((p) => p.id === userId);
   if (!user?.emailVerified) throw new SvcError("Verify your email before withdrawing.");
   if (!getUserLevel(userId)) throw new SvcError("An active membership is required to withdraw.");
+  const activeReferrals = read().referrals.filter((r) => r.referrerId === userId && r.status === "active").length;
+  if (activeReferrals < 3)
+    throw new SvcError(`You need at least 3 active referrals to withdraw. You currently have ${activeReferrals}.`);
   if (read().withdrawals.some((w) => w.userId === userId && (w.status === "pending" || w.status === "processing")))
     throw new SvcError("You already have a withdrawal in progress. Wait for it to complete.");
   if (!input.bank) throw new SvcError("Select your bank.");

@@ -63,6 +63,10 @@ Deno.serve(async (req) => {
   if (!profile) return json({ error: "Profile not found" }, 404);
   if (profile.status !== "active") return json({ error: "This account has been suspended." }, 403);
 
+  const { data: membership } = await admin
+    .from("memberships").select("id").eq("user_id", user.id).eq("status", "active").maybeSingle();
+  if (!membership) return json({ error: "An active membership is required to spin." }, 403);
+
   const { data: settingsRow } = await admin
     .from("platform_settings").select("payload").eq("id", true).maybeSingle();
   const cfg: any = {
@@ -83,12 +87,6 @@ Deno.serve(async (req) => {
 
   if (cfg.requireVerified === true && !user.email_confirmed_at)
     return json({ error: "Verify your email address to unlock the daily spin." }, 403);
-
-  if (cfg.requireMembership === true) {
-    const { data: membership } = await admin
-      .from("memberships").select("id").eq("user_id", user.id).eq("status", "active").maybeSingle();
-    if (!membership) return json({ error: "An active membership is required to spin." }, 403);
-  }
 
   /* ---------- one spin per 24h (server-enforced) ---------- */
   const { data: lastSpin } = await admin

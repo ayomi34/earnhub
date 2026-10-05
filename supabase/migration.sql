@@ -253,9 +253,11 @@ drop policy if exists "feud sessions: self update" on public.feud_sessions;
 create policy "feud sessions: self read" on public.feud_sessions for select
   using (auth.uid() = user_id or public.is_admin());
 create policy "feud sessions: self insert" on public.feud_sessions for insert
-  with check (auth.uid() = user_id);
+  with check (auth.uid() = user_id
+    and exists (select 1 from public.memberships m where m.user_id = auth.uid() and m.status = 'active'));
 create policy "feud sessions: self update" on public.feud_sessions for update
-  using (auth.uid() = user_id) with check (auth.uid() = user_id);
+  using (auth.uid() = user_id) with check (auth.uid() = user_id
+    and exists (select 1 from public.memberships m where m.user_id = auth.uid() and m.status = 'active'));
 
 -- feud rewards are a new wallet credit type
 do $$
@@ -271,4 +273,21 @@ end
 $$;
 alter table public.wallet_transactions add constraint wallet_transactions_type_check
   check (type in ('task_reward','referral_bonus','withdrawal','refund','adjustment','spin_reward','feud_reward'));
+
+-- ---------- 9. Membership and referral eligibility ----------
+drop policy if exists "submissions: self start" on public.task_submissions;
+create policy "submissions: self start" on public.task_submissions for insert
+  with check (auth.uid() = user_id and status in ('in_progress','submitted')
+    and exists (select 1 from public.memberships m where m.user_id = auth.uid() and m.status = 'active'));
+drop policy if exists "submissions: self submit" on public.task_submissions;
+create policy "submissions: self submit" on public.task_submissions for update using (auth.uid() = user_id)
+  with check (auth.uid() = user_id and status in ('in_progress','submitted')
+    and exists (select 1 from public.memberships m where m.user_id = auth.uid() and m.status = 'active'));
+
+drop policy if exists "withdrawals: self request" on public.withdrawals;
+create policy "withdrawals: self request" on public.withdrawals for insert
+  with check (auth.uid() = user_id and status = 'pending'
+    and exists (select 1 from public.memberships m where m.user_id = auth.uid() and m.status = 'active')
+    and (select count(*) from public.referrals r
+      where r.referrer_id = auth.uid() and r.status = 'active') >= 3);
 -- ============================================================

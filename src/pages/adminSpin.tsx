@@ -150,8 +150,8 @@ export function AdminSpin() {
             Require verified email
           </label>
           <label className="flex items-center gap-2.5 text-sm text-slate-700">
-            <input type="checkbox" checked={draft.requireMembership} onChange={(e) => { setDraft({ ...draft, requireMembership: e.target.checked }); setDirty(true); }} className="h-4 w-4 accent-emerald-600" />
-            Require active membership
+            <input type="checkbox" checked disabled className="h-4 w-4 accent-emerald-600" />
+            Active membership always required
           </label>
           <Field label="Max daily reward budget (₦)">
             <Input type="number" min={0} value={draft.dailyBudget} onChange={(e) => { setDraft({ ...draft, dailyBudget: Math.max(0, Math.floor(Number(e.target.value))) }); setDirty(true); }} />

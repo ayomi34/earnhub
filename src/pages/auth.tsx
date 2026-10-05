@@ -186,7 +186,7 @@ export function Register() {
             onBack={() => setStep(1)}
             onDone={(id) => {
               setUserId(id);
-              setStep(3);
+              navigate("/app/tasks");
             }}
             onSkip={async () => {
               const id = await run(

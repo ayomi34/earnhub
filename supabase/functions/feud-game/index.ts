@@ -82,12 +82,10 @@ Deno.serve(async (req) => {
   if (!profile) return json({ error: "Profile not found" }, 404);
   if (profile.status !== "active") return json({ error: "This account has been suspended." }, 403);
 
-  let membershipLevelId: string | null = null;
-  if (profile.membership_id) {
-    const { data: membership } = await admin
-      .from("memberships").select("level_id").eq("id", profile.membership_id).eq("status", "active").maybeSingle();
-    membershipLevelId = membership?.level_id ?? null;
-  }
+  const { data: membership } = await admin
+    .from("memberships").select("level_id").eq("user_id", user.id).eq("status", "active").maybeSingle();
+  if (!membership) return json({ error: "An active membership is required to play Survey Feud." }, 403);
+  const membershipLevelId: string = membership.level_id;
 
   const { data: settingsRow } = await admin
     .from("platform_settings").select("payload").eq("id", true).maybeSingle();
