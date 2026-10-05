@@ -325,6 +325,162 @@ Deno.serve(async (req) => {
       return json({ ok: true });
     }
 
+    case "update-user-profile": {
+      const userId = String(body.userId || "");
+      const fullName = String(body.fullName || "").trim();
+      const phone = String(body.phone || "").trim();
+      if (fullName.length < 3 || fullName.length > 100) return json({ error: "Name must be between 3 and 100 characters." }, 400);
+      if (phone.length > 30) return json({ error: "Phone number is too long." }, 400);
+      const { data: target } = await admin.from("profiles").select("role").eq("id", userId).maybeSingle();
+      if (!target || target.role === "admin") return json({ error: "User not found." }, 404);
+      const { error } = await admin.from("profiles").update({ full_name: fullName, phone }).eq("id", userId);
+      if (error) return json({ error: error.message }, 500);
+      await audit("user.profile.update", `${userId} ${fullName}`);
+      return json({ ok: true });
+    }
+
+    case "set-user-role": {
+      const userId = String(body.userId || "");
+      const role = String(body.role || "");
+      if (!["user", "admin"].includes(role)) return json({ error: "Invalid role." }, 400);
+      if (userId === user.id) return json({ error: "You cannot change your own administrator role." }, 400);
+      const { data: target } = await admin.from("profiles").select("role").eq("id", userId).maybeSingle();
+      if (!target) return json({ error: "User not found." }, 404);
+      if (target.role === "admin" && role === "user") {
+        const { count } = await admin.from("profiles").select("id", { count: "exact", head: true }).eq("role", "admin");
+        if ((count ?? 0) <= 1) return json({ error: "The last administrator cannot be demoted." }, 400);
+      }
+      const { error } = await admin.from("profiles").update({ role }).eq("id", userId);
+      if (error) return json({ error: error.message }, 500);
+      await audit("user.role.update", `${userId} ${target.role} -> ${role}`);
+      return json({ ok: true });
+    }
+
+    case "set-user-membership": {
+      const userId = String(body.userId || "");
+      const levelId = String(body.levelId || "");
+      const { data: target } = await admin.from("profiles").select("role, membership_id").eq("id", userId).maybeSingle();
+      if (!target || target.role === "admin") return json({ error: "User not found." }, 404);
+      const { data: activeMemberships, error: activeError } = await admin
+        .from("memberships").select("id").eq("user_id", userId).eq("status", "active");
+      if (activeError) return json({ error: activeError.message }, 500);
+
+      if (!levelId) {
+        const { error: expireError } = await admin.from("memberships").update({ status: "expired" }).eq("user_id", userId).eq("status", "active");
+        if (expireError) return json({ error: expireError.message }, 500);
+        const { error } = await admin.from("profiles").update({ membership_id: null }).eq("id", userId);
+        if (error) {
+          for (const membership of activeMemberships ?? []) {
+            await admin.from("memberships").update({ status: "active" }).eq("id", membership.id);
+          }
+          return json({ error: error.message }, 500);
+        }
+        await audit("user.membership.remove", userId);
+        return json({ ok: true });
+      }
+
+      const { data: level } = await admin.from("membership_levels").select("id, name, price, enabled").eq("id", levelId).maybeSingle();
+      if (!level || !level.enabled) return json({ error: "Choose an enabled membership level." }, 400);
+      const paymentId = crypto.randomUUID();
+      const { error: paymentError } = await admin.from("payments").insert({
+        id: paymentId,
+        user_id: userId,
+        level_id: levelId,
+        amount: level.price,
+        reference: `EH-ADMIN-${crypto.randomUUID()}`,
+        gateway: "admin",
+        gateway_status: "admin_granted",
+        status: "pending",
+      });
+      if (paymentError) return json({ error: paymentError.message }, 500);
+
+      const { error: expireError } = await admin.from("memberships").update({ status: "expired" }).eq("user_id", userId).eq("status", "active");
+      if (expireError) {
+        await admin.from("payments").delete().eq("id", paymentId);
+        return json({ error: expireError.message }, 500);
+      }
+      const { data: membership, error: membershipError } = await admin.from("memberships").insert({
+        user_id: userId,
+        level_id: levelId,
+        payment_id: paymentId,
+        status: "active",
+      }).select("id").single();
+      if (membershipError || !membership) {
+        await admin.from("payments").delete().eq("id", paymentId);
+        for (const previous of activeMemberships ?? []) {
+          await admin.from("memberships").update({ status: "active" }).eq("id", previous.id);
+        }
+        return json({ error: membershipError?.message || "Could not assign membership." }, 500);
+      }
+      const { error: profileError } = await admin.from("profiles").update({ membership_id: membership.id }).eq("id", userId);
+      if (profileError) {
+        await admin.from("memberships").delete().eq("id", membership.id);
+        await admin.from("payments").delete().eq("id", paymentId);
+        for (const previous of activeMemberships ?? []) {
+          await admin.from("memberships").update({ status: "active" }).eq("id", previous.id);
+        }
+        return json({ error: profileError.message }, 500);
+      }
+      await audit("user.membership.assign", `${userId} ${level.name}`);
+      return json({ ok: true });
+    }
+
+    case "adjust-user-wallet": {
+      const userId = String(body.userId || "");
+      const direction = String(body.direction || "");
+      const amount = Number(body.amount);
+      const reason = String(body.reason || "").trim();
+      if (!["credit", "debit"].includes(direction)) return json({ error: "Choose credit or debit." }, 400);
+      if (!Number.isSafeInteger(amount) || amount < 1 || amount > 10000000) return json({ error: "Amount must be between ₦1 and ₦10,000,000." }, 400);
+      if (reason.length < 5 || reason.length > 300) return json({ error: "Enter a reason between 5 and 300 characters." }, 400);
+      const { data: target } = await admin.from("profiles").select("role").eq("id", userId).maybeSingle();
+      if (!target || target.role === "admin") return json({ error: "User not found." }, 404);
+      const [{ data: balance, error: balanceError }, { data: holds, error: holdsError }] = await Promise.all([
+        admin.from("wallet_balances").select("ledger_balance").eq("user_id", userId).maybeSingle(),
+        admin.from("withdrawals").select("amount, fee").eq("user_id", userId).in("status", ["pending", "processing"]),
+      ]);
+      if (balanceError || holdsError) return json({ error: balanceError?.message || holdsError?.message || "Could not verify the available balance." }, 500);
+      const available = Number(balance?.ledger_balance || 0) - (holds ?? []).reduce((sum: number, row: any) => sum + Number(row.amount || 0) + Number(row.fee || 0), 0);
+      if (direction === "debit" && amount > available) return json({ error: `Debit exceeds the available balance of ₦${Math.max(0, available).toLocaleString()}.` }, 400);
+      const { error } = await admin.from("wallet_transactions").insert({
+        user_id: userId,
+        type: "adjustment",
+        direction,
+        amount,
+        status: "approved",
+        description: `Admin adjustment: ${reason}`,
+        reference: `EH-ADJ-${crypto.randomUUID()}`,
+        source_id: crypto.randomUUID(),
+      });
+      if (error) return json({ error: error.message }, 500);
+      await audit("user.wallet.adjust", `${userId} ${direction} ₦${amount} — ${reason}`);
+      return json({ ok: true });
+    }
+
+    case "remove-user": {
+      const userId = String(body.userId || "");
+      if (userId === user.id) return json({ error: "You cannot remove your own account." }, 400);
+      const { data: target } = await admin.from("profiles").select("role").eq("id", userId).maybeSingle();
+      if (!target || target.role === "admin") return json({ error: "Admin accounts cannot be removed here." }, 400);
+      const anonymizedEmail = `removed-${userId}@deleted.invalid`;
+      const { error: authUpdateError } = await admin.auth.admin.updateUserById(userId, {
+        email: anonymizedEmail,
+        ban_duration: "876000h",
+        user_metadata: {},
+      });
+      if (authUpdateError) return json({ error: authUpdateError.message }, 500);
+      const { error } = await admin.from("profiles").update({
+        full_name: "Removed account",
+        email: anonymizedEmail,
+        phone: "",
+        bank: null,
+        status: "suspended",
+      }).eq("id", userId);
+      if (error) return json({ error: error.message }, 500);
+      await audit("user.remove", userId);
+      return json({ ok: true, anonymizedEmail });
+    }
+
     /* ---------------- platform settings ---------------- */
     case "save-settings": {
       const s = body.settings ?? {};
@@ -411,6 +567,77 @@ Deno.serve(async (req) => {
       });
       await audit(`spin.reward.${decision}`, `${spin.reference} — ₦${Number(spin.amount).toLocaleString()}`);
       return json({ ok: true });
+    }
+
+    /* ---------------- survey feud ---------------- */
+    case "save-feud-settings": {
+      const cfg = body.config ?? {};
+      const { data: row } = await admin.from("platform_settings").select("payload").eq("id", true).maybeSingle();
+      const payload = { ...((row?.payload as any) ?? {}), feud: cfg };
+      const { error } = await admin.from("platform_settings").upsert({
+        id: true, payload, updated_at: new Date().toISOString(),
+      });
+      if (error) return json({ error: error.message }, 500);
+      await audit("feud.settings", `Target ${cfg.targetPoints || 200} pts · ${cfg.timeLimitSeconds || 25}s`);
+      return json({ ok: true, config: cfg });
+    }
+
+    case "save-feud-question": {
+      const q = body.question ?? {};
+      if (!q.prompt?.trim()) return json({ error: "Prompt is required." }, 400);
+      if (!Array.isArray(q.answers) || q.answers.length === 0) return json({ error: "Answers required." }, 400);
+      const { error } = await admin.from("feud_questions").upsert({
+        id: q.id,
+        prompt: q.prompt.trim(),
+        category: q.category || "General",
+        difficulty: q.difficulty || "easy",
+        explanation: q.explanation || null,
+        answers: q.answers,
+        status: q.status || "active",
+      });
+      if (error) return json({ error: error.message }, 500);
+      await audit("feud.question.save", `Question: ${q.prompt.slice(0, 40)}`);
+      return json({ ok: true, question: q });
+    }
+
+    case "delete-feud-question": {
+      const { questionId } = body;
+      const { error } = await admin.from("feud_questions").delete().eq("id", questionId);
+      if (error) return json({ error: error.message }, 500);
+      await audit("feud.question.delete", `Question ID: ${questionId}`);
+      return json({ ok: true });
+    }
+
+    case "import-feud-questions": {
+      const list: any[] = Array.isArray(body.questions) ? body.questions : [];
+      let inserted = 0;
+      let failed = 0;
+      const errors: { row: number; error: string }[] = [];
+
+      for (let i = 0; i < list.length; i++) {
+        const item = list[i];
+        if (!item.prompt?.trim() || !Array.isArray(item.answers) || item.answers.length === 0) {
+          failed++;
+          errors.push({ row: i + 1, error: "Missing prompt or answers" });
+          continue;
+        }
+        const { error } = await admin.from("feud_questions").insert({
+          prompt: item.prompt.trim(),
+          category: item.category || "General",
+          difficulty: item.difficulty || "easy",
+          explanation: item.explanation || null,
+          answers: item.answers,
+          status: item.status || "active",
+        });
+        if (error) {
+          failed++;
+          errors.push({ row: i + 1, error: error.message });
+        } else {
+          inserted++;
+        }
+      }
+      await audit("feud.questions.import", `Imported ${inserted} questions, ${failed} failed`);
+      return json({ inserted, failed, errors });
     }
 
     default:

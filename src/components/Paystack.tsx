@@ -8,7 +8,7 @@ import type { MembershipLevel, Payment } from "../lib/types";
 declare global {
   interface Window {
     PaystackPop?: {
-      new: () => {
+      new (): {
         newTransaction: (options: {
           key: string;
           email: string;
@@ -63,7 +63,7 @@ export default function PaystackCheckout({ payment, level, email, onDone, onClos
     try {
       await loadPaystack();
       if (!window.PaystackPop) throw new Error("Paystack checkout is unavailable.");
-      window.PaystackPop.new().newTransaction({
+      new window.PaystackPop().newTransaction({
         key: paystackPublicKey,
         email,
         amount: payment.amount * 100,

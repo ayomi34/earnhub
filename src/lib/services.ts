@@ -80,7 +80,7 @@ function mapTask(row: any): Task {
 function mapPayment(row: any): Payment {
   return {
     id: row.id, userId: row.user_id, levelId: row.level_id, amount: Number(row.amount),
-    reference: row.reference, gateway: "paystack",
+    reference: row.reference, gateway: row.gateway === "admin" ? "admin" : "paystack",
     gatewayStatus: row.gateway_status || "initialized",
     status: row.status || "pending",
     verifiedAt: row.verified_at ? new Date(row.verified_at).getTime() : null,
@@ -299,6 +299,8 @@ async function executeDirectSpin(userId: string): Promise<SpinOutcome> {
     status,
     reference,
     createdAt: Date.now(),
+    ip: null,
+    userAgent: null,
   };
 
   let walletTx: WalletTx | null = null;
@@ -524,16 +526,26 @@ export async function adminSetSpinReward(
 /* ================= HYDRATION (Supabase -> cache) ================= */
 
 export async function hydrateContentFromSupabase() {
-  const [levels, tasks, settingsRes] = await Promise.all([
+  const [levels, tasks, settingsRes, feudQuestionsRes] = await Promise.all([
     supabase.from("membership_levels").select("*").order("sort_order", { ascending: true }),
     supabase.from("tasks").select("*").order("created_at", { ascending: false }),
     supabase.from("platform_settings").select("payload").maybeSingle(),
+    supabase.from("feud_questions").select("*").order("created_at", { ascending: false }),
   ]);
+  const { mapFeudQuestion, normalizeFeudConfig } = await import("./feudServices");
   update((db) => {
     if (Array.isArray(levels.data)) db.levels = levels.data.map(mapLevel);
     if (Array.isArray(tasks.data)) db.tasks = tasks.data.map(mapTask);
     if (settingsRes.data?.payload) {
-      db.settings = { ...db.settings, ...settingsRes.data.payload, spin: normalizeSpinConfig((settingsRes.data.payload as any).spin) };
+      db.settings = {
+        ...db.settings,
+        ...settingsRes.data.payload,
+        spin: normalizeSpinConfig((settingsRes.data.payload as any).spin),
+        feud: normalizeFeudConfig((settingsRes.data.payload as any).feud),
+      };
+    }
+    if (Array.isArray(feudQuestionsRes.data) && feudQuestionsRes.data.length > 0) {
+      db.feudQuestions = feudQuestionsRes.data.map(mapFeudQuestion);
     }
   });
 }
@@ -560,11 +572,12 @@ export async function hydrateAll() {
       db.audit = [];
       db.spins = [];
       db.spinWinners = [];
+      db.feudSessions = [];
     });
     return;
   }
 
-  const [profiles, payments, memberships, withdrawals, walletTx, submissions, referrals, notifications, tickets, audit, spins] =
+  const [profiles, payments, memberships, withdrawals, walletTx, submissions, referrals, notifications, tickets, audit, spins, feudSessionsRes] =
     await Promise.all([
       supabase.from("profiles").select("*").order("created_at", { ascending: false }),
       supabase.from("payments").select("*").order("created_at", { ascending: false }),
@@ -577,7 +590,10 @@ export async function hydrateAll() {
       supabase.from("support_tickets").select("*").order("created_at", { ascending: false }),
       supabase.from("audit_logs").select("*").order("created_at", { ascending: false }),
       supabase.from("spins").select("*").order("created_at", { ascending: false }),
+      supabase.from("feud_sessions").select("*").order("started_at", { ascending: false }),
     ]);
+
+  const { mapFeudSession } = await import("./feudServices");
 
   update((db) => {
     db.session = { userId };
@@ -596,6 +612,7 @@ export async function hydrateAll() {
     if (Array.isArray(tickets.data)) db.tickets = tickets.data.map(mapTicket);
     if (Array.isArray(audit.data)) db.audit = audit.data.map(mapAudit);
     if (Array.isArray(spins.data)) db.spins = spins.data.map(mapSpin);
+    if (Array.isArray(feudSessionsRes.data)) db.feudSessions = feudSessionsRes.data.map(mapFeudSession);
   });
 }
 
@@ -1159,7 +1176,7 @@ export const getMyTickets = (userId: string) =>
 
 /* ================= ADMIN ================= */
 
-function requireAdmin(adminId: string): Profile {
+export function requireAdmin(adminId: string): Profile {
   const a = read().profiles.find((p) => p.id === adminId);
   if (!a || a.role !== "admin") throw new SvcError("Administrator access required.");
   return a;
@@ -1168,7 +1185,7 @@ function requireAdmin(adminId: string): Profile {
 /** All privileged writes go through the admin-action edge function, which
  *  re-verifies the caller's admin role server-side, writes with the service
  *  role, appends an audit_logs row, and returns the committed rows. */
-async function invokeAdmin(action: string, payload: Record<string, unknown> = {}) {
+export async function invokeAdmin(action: string, payload: Record<string, unknown> = {}) {
   const { data, error } = await supabase.functions.invoke("admin-action", {
     body: { action, ...payload },
   });
@@ -1295,8 +1312,52 @@ export async function adminSetUserStatus(adminId: string, userId: string, status
   await hydrateAll();
 }
 
-export function getAllUsers(): Profile[] {
-  return read().profiles.filter((p) => p.role !== "admin").sort((a, b) => b.createdAt - a.createdAt);
+export async function adminUpdateUserProfile(adminId: string, userId: string, fullName: string, phone: string) {
+  requireAdmin(adminId);
+  await invokeAdmin("update-user-profile", { userId, fullName, phone });
+  await hydrateAll();
+}
+
+export async function adminSetUserRole(adminId: string, userId: string, role: "user" | "admin") {
+  requireAdmin(adminId);
+  await invokeAdmin("set-user-role", { userId, role });
+  await hydrateAll();
+}
+
+export async function adminSetUserMembership(adminId: string, userId: string, levelId: string | null) {
+  requireAdmin(adminId);
+  await invokeAdmin("set-user-membership", { userId, levelId });
+  await hydrateAll();
+}
+
+export async function adminAdjustUserWallet(
+  adminId: string, userId: string, direction: "credit" | "debit", amount: number, reason: string
+) {
+  requireAdmin(adminId);
+  await invokeAdmin("adjust-user-wallet", { userId, direction, amount, reason });
+  await hydrateAll();
+}
+
+export async function adminSendPasswordReset(adminId: string, email: string) {
+  requireAdmin(adminId);
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}/#/reset`,
+  });
+  if (error) throw new SvcError(friendlyAuthError(error.message));
+  return "sent";
+}
+
+export async function adminRemoveUser(adminId: string, userId: string): Promise<{ anonymizedEmail: string }> {
+  requireAdmin(adminId);
+  const result = await invokeAdmin("remove-user", { userId });
+  await hydrateAll();
+  return result as { anonymizedEmail: string };
+}
+
+export function getAllUsers(includeAdmins = false): Profile[] {
+  return read().profiles
+    .filter((p) => includeAdmins || p.role !== "admin")
+    .sort((a, b) => b.createdAt - a.createdAt);
 }
 
 export function settings(): Settings {

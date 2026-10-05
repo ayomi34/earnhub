@@ -65,10 +65,7 @@ begin
     coalesce(new.raw_user_meta_data->>'full_name', 'User'),
     new.email,
     coalesce(new.raw_user_meta_data->>'phone', ''),
-    coalesce(
-      nullif(new.raw_user_meta_data->>'referral_code', ''),
-      'EH-' || upper(substr(md5(random()::text || clock_timestamp()::text), 1, 6))
-    )
+    'EH-' || upper(substr(md5(random()::text || clock_timestamp()::text), 1, 6))
   )
   on conflict (id) do nothing;
 
@@ -152,7 +149,7 @@ alter table public.profiles
 create table public.wallet_transactions (
   id          uuid primary key default gen_random_uuid(),
   user_id     uuid not null references public.profiles(id),
-  type        text not null check (type in ('task_reward','referral_bonus','withdrawal','refund','adjustment','spin_reward')),
+  type        text not null check (type in ('task_reward','referral_bonus','withdrawal','refund','adjustment','spin_reward','feud_reward')),
   direction   text not null check (direction in ('credit','debit')),
   amount      integer not null check (amount > 0),
   status      text not null default 'approved' check (status in ('pending','approved','rejected')),
@@ -281,6 +278,43 @@ $$;
 
 grant execute on function public.recent_spin_winners() to authenticated;
 
+-- ---------- survey feud ----------
+-- Question bank is written by admins (admin-action edge function with the
+-- service role; direct admin writes are also allowed by RLS). Members read
+-- active questions only. Game sessions are created/scored by members during
+-- play and validated server-side by the feud-game edge function when deployed.
+create table public.feud_questions (
+  id          uuid primary key default gen_random_uuid(),
+  prompt      text not null,
+  category    text not null default 'General',
+  difficulty  text not null default 'easy'
+              check (difficulty in ('easy','medium','hard')),
+  explanation text,
+  answers     jsonb not null default '[]'::jsonb, -- [{id,text,points,rank}]
+  status      text not null default 'active'
+              check (status in ('active','inactive')),
+  created_at  timestamptz not null default now()
+);
+create index on public.feud_questions (status);
+
+create table public.feud_sessions (
+  id                 uuid primary key default gen_random_uuid(),
+  user_id            uuid not null references public.profiles(id),
+  score              integer not null default 0 check (score >= 0),
+  target_points      integer not null default 200 check (target_points > 0),
+  completed          boolean not null default false,
+  reward_amount      integer not null default 0 check (reward_amount >= 0),
+  reward_status      text not null default 'none'
+                     check (reward_status in ('none','pending','credited')),
+  time_spent_seconds integer not null default 0,
+  started_at         timestamptz not null default now(),
+  completed_at       timestamptz,
+  question_ids       jsonb not null default '[]'::jsonb,
+  rounds             jsonb not null default '[]'::jsonb  -- answer history
+);
+create index on public.feud_sessions (user_id, started_at desc);
+create index on public.feud_sessions (started_at desc);
+
 -- ---------- notifications / support / audit / settings ----------
 create table public.notifications (
   id         uuid primary key default gen_random_uuid(),
@@ -343,6 +377,8 @@ alter table public.notifications       enable row level security;
 alter table public.support_tickets     enable row level security;
 alter table public.audit_logs          enable row level security;
 alter table public.platform_settings   enable row level security;
+alter table public.feud_questions      enable row level security;
+alter table public.feud_sessions       enable row level security;
 
 create policy "profiles: self read"        on public.profiles for select using (auth.uid() = id or public.is_admin());
 create policy "profiles: self update safe" on public.profiles for update using (auth.uid() = id)
@@ -390,6 +426,20 @@ create policy "tickets: self read"      on public.support_tickets for select usi
 
 create policy "audit: admin read"       on public.audit_logs for select using (public.is_admin());
 create policy "settings: public read"   on public.platform_settings for select using (true);
+
+-- survey feud: only admins read the full question bank. Members receive
+-- playable questions through the edge function without answer-point values.
+-- Sessions may only be inserted/updated by their owner.
+create policy "feud questions: read"    on public.feud_questions for select
+  using (public.is_admin());
+create policy "feud questions: admin write" on public.feud_questions
+  using (public.is_admin()) with check (public.is_admin());
+create policy "feud sessions: self read" on public.feud_sessions for select
+  using (auth.uid() = user_id or public.is_admin());
+create policy "feud sessions: self insert" on public.feud_sessions for insert
+  with check (auth.uid() = user_id);
+create policy "feud sessions: self update" on public.feud_sessions for update
+  using (auth.uid() = user_id) with check (auth.uid() = user_id);
 
 -- admin writes (levels, tasks, submissions review) go through edge functions
 -- that verify is_admin() server-side, then write with the service role and

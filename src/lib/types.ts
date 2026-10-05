@@ -6,6 +6,7 @@ export type TxType =
   | "task_reward"
   | "referral_bonus"
   | "spin_reward"
+  | "feud_reward"
   | "withdrawal"
   | "refund"
   | "adjustment";
@@ -75,8 +76,8 @@ export interface Payment {
   levelId: string;
   amount: number;
   reference: string;
-  gateway: "paystack";
-  gatewayStatus: "initialized" | "success" | "failed";
+  gateway: "paystack" | "admin";
+  gatewayStatus: "initialized" | "success" | "failed" | "admin_granted";
   status: PaymentStatus; // platform status after server-side verification
   verifiedAt: number | null;
   createdAt: number;
@@ -220,6 +221,73 @@ export interface SpinWinner {
   wonAt: number;
 }
 
+/* ================= SURVEY FEUD ================= */
+
+export interface FeudAnswer {
+  id: string;
+  text: string;
+  points: number;
+  rank: number;
+}
+
+export interface FeudQuestion {
+  id: string;
+  prompt: string;
+  category: string;
+  difficulty: "easy" | "medium" | "hard";
+  explanation?: string;
+  answers: FeudAnswer[];
+  status: "active" | "inactive";
+  createdAt: number;
+}
+
+export interface FeudScoreTier {
+  minScore: number;
+  maxScore: number;
+  reward: number; // In Naira (₦)
+  rewardsByLevel?: Record<string, number>;
+}
+
+export interface FeudConfig {
+  enabled: boolean;
+  targetPoints: number; // default 200
+  timeLimitSeconds: number; // default 25s per game
+  questionsPerGame: number; // default 4
+  dailyLimit: number; // games per user per day, default 3
+  minScoreForReward: number; // default 100
+  target200Reward: number; // flat reward for reaching 200 pts, e.g. ₦100
+  target200RewardsByLevel?: Record<string, number>;
+  scoreTiers: FeudScoreTier[];
+  maxWinners: number; // 0 for unlimited, or e.g. 50
+  startDate: string | null; // ISO string or null
+  endDate: string | null; // ISO string or null
+}
+
+export interface FeudRoundAnswerRecord {
+  questionId: string;
+  prompt: string;
+  selectedAnswerId: string | null;
+  selectedText: string | null;
+  pointsEarned: number;
+  answeredAt: number;
+  options: { id: string; text: string; points: number; rank: number }[];
+}
+
+export interface FeudGameSession {
+  id: string;
+  userId: string;
+  score: number;
+  targetPoints: number;
+  completed: boolean;
+  rewardAmount: number;
+  rewardStatus: "none" | "pending" | "credited";
+  timeSpentSeconds: number;
+  startedAt: number;
+  completedAt: number | null;
+  questionIds: string[];
+  rounds: FeudRoundAnswerRecord[];
+}
+
 export interface Settings {
   platformName: string;
   supportEmail: string;
@@ -230,6 +298,7 @@ export interface Settings {
   paystackPublicKey: string;
   paymentMode: "live";
   spin: SpinConfig;
+  feud: FeudConfig;
 }
 
 export interface AuditLog {
@@ -256,6 +325,8 @@ export interface DB {
   audit: AuditLog[];
   spins: SpinReward[];
   spinWinners: SpinWinner[];
+  feudQuestions: FeudQuestion[];
+  feudSessions: FeudGameSession[];
   settings: Settings;
   session: { userId: string } | null;
 }

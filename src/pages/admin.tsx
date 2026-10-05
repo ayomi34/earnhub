@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import {
   BadgeCheck, Ban, Check, ClipboardList, Coins, CreditCard,
-  Layers, ListChecks, Pencil, Plus, Search, Trash2, TrendingUp, Upload, Users, Wallet, X,
+  KeyRound, Layers, ListChecks, Pencil, Plus, Search, Trash2, TrendingUp, Upload, Users, Wallet, X,
 } from "lucide-react";
 import {
   Badge, Button, Card, CardHeader, EmptyState, Field, Input, Modal, PageHead,
@@ -9,6 +9,8 @@ import {
 } from "../components/ui";
 import {
   adminDeleteLevel, adminDeleteTask, adminSaveLevel, adminSaveTask, adminSetUserStatus,
+  adminAdjustUserWallet, adminRemoveUser, adminSendPasswordReset, adminSetUserMembership,
+  adminSetUserRole, adminUpdateUserProfile,
   adminStats, getAllUsers, getBalances, getMySubmissions, getPayments, getUserLevel,
   getWithdrawals, listLevels,
 } from "../lib/services";
@@ -95,7 +97,7 @@ export function AdminUsers() {
   const admin = useUser()!;
   const { busy, run } = useAction();
   const [q, setQ] = useState("");
-  const users = useData(getAllUsers);
+  const users = useData(() => getAllUsers(true));
   const [detail, setDetail] = useState<Profile | null>(null);
 
   const filtered = useMemo(() => {
@@ -106,7 +108,7 @@ export function AdminUsers() {
 
   return (
     <div>
-      <PageHead title="Users" sub={`${users.length} registered accounts`} />
+      <PageHead title="Users" sub={`${users.length} accounts, including administrators`} />
       <div className="relative mb-4 max-w-sm">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
         <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, email or referral code…" className="pl-9" />
@@ -115,7 +117,7 @@ export function AdminUsers() {
         {filtered.length === 0 ? (
           <EmptyState icon={<Users className="h-5 w-5" />} title="No users found" />
         ) : (
-          <Table head={["User", "Level", "Joined", "Status", ""]}>
+          <Table head={["User", "Role", "Level", "Joined", "Status", ""]}>
             {filtered.map((u) => (
               <UserRow key={u.id} u={u} onOpen={() => setDetail(u)} />
             ))}
@@ -125,7 +127,7 @@ export function AdminUsers() {
 
       {/* user detail drawer */}
       <Modal open={!!detail} onClose={() => setDetail(null)} title="User profile" wide>
-        {detail && <UserDetail u={detail} adminId={admin.id} busy={busy} run={run} onChanged={setDetail} />}
+        {detail && <UserDetail key={detail.id} u={detail} adminId={admin.id} busy={busy} run={run} onChanged={setDetail} />}
       </Modal>
     </div>
   );
@@ -139,6 +141,7 @@ function UserRow({ u, onOpen }: { u: Profile; onOpen: () => void }) {
         <span className="block font-medium">{u.fullName}</span>
         <span className="text-xs text-slate-400">{u.email} · {u.phone}</span>
       </Td>
+      <Td><Badge tone={u.role === "admin" ? "amber" : "slate"}>{u.role === "admin" ? "Administrator" : "User"}</Badge></Td>
       <Td>{level ? <Badge tone="green">{level.name}</Badge> : <span className="text-xs text-slate-400">None</span>}</Td>
       <Td className="text-xs text-slate-400">{fmtDate(u.createdAt)}</Td>
       <Td><StatusBadge status={u.status} /></Td>
@@ -154,12 +157,70 @@ function UserDetail({ u, adminId, busy, run, onChanged }: {
 }) {
   const fresh = useData(() => read().profiles.find((p) => p.id === u.id) || u);
   const level = useData(() => getUserLevel(fresh.id));
+  const levels = useData(() => listLevels(true));
   const bal = useData(() => getBalances(fresh.id));
   const payments = useData(() => getPayments(fresh.id));
   const subs = useData(() => getMySubmissions(fresh.id).slice(0, 6));
   const withdrawals = useData(() => getWithdrawals(fresh.id).slice(0, 4));
   const refs = useData(() => read().referrals.filter((r) => r.referrerId === fresh.id).length);
   const approvedCount = useData(() => getMySubmissions(fresh.id).filter((s) => s.status === "approved").length);
+  const [profileDraft, setProfileDraft] = useState({ fullName: fresh.fullName, phone: fresh.phone });
+  const [roleDraft, setRoleDraft] = useState<Profile["role"]>(fresh.role);
+  const [confirmAdminGrant, setConfirmAdminGrant] = useState(false);
+  const [membershipDraft, setMembershipDraft] = useState(level?.id || "");
+  const [walletDirection, setWalletDirection] = useState<"credit" | "debit">("credit");
+  const [walletAmount, setWalletAmount] = useState("");
+  const [walletReason, setWalletReason] = useState("");
+  const [confirmRemoval, setConfirmRemoval] = useState(false);
+  const [removalConfirmation, setRemovalConfirmation] = useState("");
+  const isRemoved = fresh.email.endsWith("@deleted.invalid");
+
+  const saveProfile = async () => {
+    const result = await run(
+      () => adminUpdateUserProfile(adminId, fresh.id, profileDraft.fullName, profileDraft.phone),
+      "User profile updated."
+    );
+    if (result !== null) onChanged({ ...fresh, ...profileDraft });
+  };
+
+  const saveRole = async () => {
+    const result = await run(() => adminSetUserRole(adminId, fresh.id, roleDraft), "User role updated.");
+    if (result !== null) onChanged({ ...fresh, role: roleDraft });
+  };
+
+  const saveMembership = async () => {
+    await run(
+      () => adminSetUserMembership(adminId, fresh.id, membershipDraft || null),
+      membershipDraft ? "Membership updated." : "Membership removed."
+    );
+  };
+
+  const saveWalletAdjustment = async () => {
+    const result = await run(
+      () => adminAdjustUserWallet(adminId, fresh.id, walletDirection, Number(walletAmount), walletReason),
+      `Wallet ${walletDirection === "credit" ? "credited" : "debited"}.`
+    );
+    if (result !== null) {
+      setWalletAmount("");
+      setWalletReason("");
+    }
+  };
+
+  const removeAccount = async () => {
+    const result = await run(() => adminRemoveUser(adminId, fresh.id), "Account anonymized and sign-in disabled.");
+    if (result) {
+      onChanged({
+        ...fresh,
+        fullName: "Removed account",
+        email: result.anonymizedEmail,
+        phone: "",
+        bank: null,
+        status: "suspended",
+      });
+      setConfirmRemoval(false);
+      setRemovalConfirmation("");
+    }
+  };
 
   return (
     <div className="space-y-5">
@@ -199,8 +260,125 @@ function UserDetail({ u, adminId, busy, run, onChanged }: {
         </div>
       </div>
 
+      <section className="space-y-4 border-t border-slate-100 pt-5">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-900">Profile and access</h3>
+          <p className="mt-1 text-xs text-slate-500">Update contact details, account role, and membership access.</p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Full name">
+            <Input value={profileDraft.fullName} onChange={(e) => setProfileDraft({ ...profileDraft, fullName: e.target.value })} disabled={isRemoved || fresh.role === "admin"} />
+          </Field>
+          <Field label="Phone number">
+            <Input value={profileDraft.phone} onChange={(e) => setProfileDraft({ ...profileDraft, phone: e.target.value })} disabled={isRemoved || fresh.role === "admin"} />
+          </Field>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" onClick={saveProfile} loading={busy} disabled={isRemoved || fresh.role === "admin" || !profileDraft.fullName.trim()}>
+            <Pencil className="h-3.5 w-3.5" /> Save profile
+          </Button>
+        </div>
+        <div className="grid gap-4 border-t border-slate-100 pt-4 sm:grid-cols-2">
+          <Field label="Account role" hint={fresh.id === adminId ? "You cannot change your own role." : "Administrator access allows platform-wide management."}>
+            <Select value={roleDraft} onChange={(e) => { setRoleDraft(e.target.value as Profile["role"]); setConfirmAdminGrant(false); }} disabled={isRemoved || fresh.id === adminId}>
+              <option value="user">User</option>
+              <option value="admin">Administrator</option>
+            </Select>
+          </Field>
+          <div className="space-y-2">
+            {roleDraft === "admin" && fresh.role !== "admin" && (
+              <label className="flex items-start gap-2 text-xs leading-5 text-amber-800">
+                <input type="checkbox" checked={confirmAdminGrant} onChange={(e) => setConfirmAdminGrant(e.target.checked)} className="mt-1 accent-amber-600" />
+                Grant full administrator access to this account.
+              </label>
+            )}
+            <Button size="sm" variant="outline" onClick={saveRole} loading={busy} disabled={isRemoved || fresh.id === adminId || roleDraft === fresh.role || (roleDraft === "admin" && fresh.role !== "admin" && !confirmAdminGrant)}>
+              <BadgeCheck className="h-3.5 w-3.5" /> Save role
+            </Button>
+          </div>
+          <Field label="Membership level" hint={fresh.role === "admin" ? "Membership changes are for user accounts only." : undefined}>
+            <Select value={membershipDraft} onChange={(e) => setMembershipDraft(e.target.value)} disabled={isRemoved || fresh.role === "admin"}>
+              <option value="">No active membership</option>
+              {levels.map((item) => (
+                <option key={item.id} value={item.id} disabled={!item.enabled}>
+                  {item.name}{item.enabled ? "" : " (disabled)"}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <div className="flex items-end">
+            <Button size="sm" variant="outline" onClick={saveMembership} loading={busy} disabled={isRemoved || fresh.role === "admin" || membershipDraft === (level?.id || "")}>
+              <CreditCard className="h-3.5 w-3.5" /> Save membership
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      <section className="space-y-4 border-t border-slate-100 pt-5">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-900">Wallet adjustment</h3>
+          <p className="mt-1 text-xs text-slate-500">Current available balance: <span className="font-semibold text-slate-700">{fmtN(bal.available)}</span>. Every adjustment is recorded in the ledger.</p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Adjustment">
+            <Select value={walletDirection} onChange={(e) => setWalletDirection(e.target.value as "credit" | "debit")} disabled={isRemoved || fresh.role === "admin"}>
+              <option value="credit">Add funds</option>
+              <option value="debit">Deduct funds</option>
+            </Select>
+          </Field>
+          <Field label="Amount (NGN)">
+            <Input type="number" min={1} max={10000000} step={1} value={walletAmount} onChange={(e) => setWalletAmount(e.target.value)} disabled={isRemoved || fresh.role === "admin"} />
+          </Field>
+          <Field label="Reason" hint="Required for audit records">
+            <Input value={walletReason} maxLength={300} onChange={(e) => setWalletReason(e.target.value)} disabled={isRemoved || fresh.role === "admin"} />
+          </Field>
+          <div className="flex items-end">
+            <Button size="sm" onClick={saveWalletAdjustment} loading={busy} disabled={isRemoved || fresh.role === "admin" || !Number(walletAmount) || walletReason.trim().length < 5}>
+              <Wallet className="h-3.5 w-3.5" /> Apply adjustment
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      <section className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-5">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-900">Password access</h3>
+          <p className="mt-1 text-xs text-slate-500">Send a password-reset link to {fresh.email}.</p>
+        </div>
+        <Button size="sm" variant="outline" loading={busy} disabled={isRemoved} onClick={() => run(() => adminSendPasswordReset(adminId, fresh.email), "Password reset email sent.")}>
+          <KeyRound className="h-3.5 w-3.5" /> Send reset link
+        </Button>
+      </section>
+
+      <section className="border-t border-red-100 pt-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-semibold text-red-700">Remove account</h3>
+            <p className="mt-1 max-w-xl text-xs leading-5 text-slate-500">
+              Disable sign-in and anonymize personal details. Financial, referral, and audit history is retained. This cannot be undone.
+            </p>
+          </div>
+          {!confirmRemoval && !isRemoved && fresh.role !== "admin" && (
+            <Button size="sm" variant="danger" onClick={() => setConfirmRemoval(true)}>
+              <Trash2 className="h-3.5 w-3.5" /> Remove account
+            </Button>
+          )}
+          {isRemoved && <Badge tone="red">Removed</Badge>}
+        </div>
+        {confirmRemoval && !isRemoved && (
+          <div className="mt-4 max-w-md space-y-3 rounded-md border border-red-200 bg-red-50/50 p-4">
+            <p className="text-xs leading-5 text-slate-600">Type <span className="font-semibold text-slate-800">{fresh.email}</span> to confirm removal.</p>
+            <Input value={removalConfirmation} onChange={(e) => setRemovalConfirmation(e.target.value)} aria-label="Confirm account removal by email" />
+            <div className="flex gap-2">
+              <Button size="sm" variant="danger" loading={busy} disabled={removalConfirmation !== fresh.email} onClick={removeAccount}>Confirm removal</Button>
+              <Button size="sm" variant="outline" onClick={() => { setConfirmRemoval(false); setRemovalConfirmation(""); }}>Cancel</Button>
+            </div>
+          </div>
+        )}
+      </section>
+
       <div className="flex flex-wrap gap-2.5 border-t border-slate-100 pt-4">
-        {fresh.status === "active" ? (
+        {isRemoved ? <Badge tone="red">Sign-in disabled</Badge> : fresh.role === "admin" ? <Badge tone="amber">Administrator status protected</Badge> : fresh.status === "active" ? (
           <Button variant="danger" size="sm" loading={busy}
             onClick={async () => {
               const ok = await run(() => adminSetUserStatus(adminId, fresh.id, "suspended"), "Account suspended.");

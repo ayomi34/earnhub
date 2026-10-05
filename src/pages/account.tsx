@@ -166,7 +166,7 @@ export function Transactions() {
       }));
     const wallet = getWalletTx(user.id).map((t): TxRow => ({
       id: t.id, date: t.createdAt,
-      type: ({ task_reward: "Task Reward", referral_bonus: "Referral Bonus", withdrawal: "Withdrawal", refund: "Refund", adjustment: "Adjustment", spin_reward: "Spin Reward" } as const)[t.type],
+      type: (({ task_reward: "Task Reward", referral_bonus: "Referral Bonus", withdrawal: "Withdrawal", refund: "Refund", adjustment: "Adjustment", spin_reward: "Spin Reward", feud_reward: "Survey Feud Reward" } as const)[t.type] || "Reward"),
       desc: t.description, amount: t.amount, credit: t.direction === "credit",
       status: t.status, reference: t.reference,
     }));
