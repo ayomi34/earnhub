@@ -1188,7 +1188,8 @@ export function requireAdmin(adminId: string): Profile {
  *  role, appends an audit_logs row, and returns the committed rows. */
 export async function invokeAdmin(action: string, payload: Record<string, unknown> = {}) {
   const { data, error } = await supabase.functions.invoke("admin-action", {
-    body: { action, ...payload },
+    // `action` goes last so a payload key can never overwrite the routing action.
+    body: { ...payload, action },
   });
   if (error) {
     const context = (error as { context?: Response }).context;
@@ -1310,7 +1311,7 @@ export async function adminSetWithdrawal(
   requireAdmin(adminId);
   if (action === "rejected" && !(opts.note || "").trim()) throw new SvcError("Provide a reason for rejection.");
   if (action === "paid" && !(opts.payoutRef || "").trim()) throw new SvcError("Enter the bank/payout transaction reference.");
-  await invokeAdmin("set-withdrawal", { withdrawalId, action, payoutRef: opts.payoutRef, note: opts.note });
+  await invokeAdmin("set-withdrawal", { withdrawalId, withdrawalAction: action, payoutRef: opts.payoutRef, note: opts.note });
   await hydrateAll();
 }
 

@@ -266,7 +266,7 @@ Deno.serve(async (req) => {
 
     /* ---------------- withdrawals (ledger-checked payout) ---------------- */
     case "set-withdrawal": {
-      const { withdrawalId, action: wa, payoutRef = "", note = "" } = body;
+      const { withdrawalId, withdrawalAction: wa, payoutRef = "", note = "" } = body;
       if (wa === "rejected" && note.trim().length < 5) return json({ error: "Provide a reason for rejection." }, 400);
       if (wa === "paid" && !payoutRef.trim()) return json({ error: "Enter the bank/payout transaction reference." }, 400);
 
