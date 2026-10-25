@@ -326,7 +326,8 @@ export interface DB {
   spins: SpinReward[];
   spinWinners: SpinWinner[];
   feudQuestions: FeudQuestion[];
-  feudQuestionCount: number; // real DB total — populated from count query, not row fetch
+  feudQuestionCount: number;       // real DB total — populated from count query, not row fetch
+  feudActiveQuestionCount: number; // real DB active count
   feudSessions: FeudGameSession[];
   settings: Settings;
   session: { userId: string } | null;

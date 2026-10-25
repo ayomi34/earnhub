@@ -47,9 +47,9 @@ export function AdminFeud() {
     })
   );
 
-  // Use the real DB count (populated by count query on hydration, not row fetch)
+  // Use real DB counts (populated by count-only queries on hydration, not row fetch)
   const totalQuestionCount = useData(() => read().feudQuestionCount || questions.length);
-  const activeQuestions = questions.filter((q) => q.status === "active").length;
+  const activeQuestions = useData(() => read().feudActiveQuestionCount || questions.filter((q) => q.status === "active").length);
   const completedSessions = sessions.filter((s) => s.completed);
   const totalRewards = completedSessions.reduce((sum, s) => sum + s.rewardAmount, 0);
   const rewardsToday = completedSessions

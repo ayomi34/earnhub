@@ -560,17 +560,19 @@ export async function hydrateContentFromSupabase() {
   // has 10k+ rows and questions are served by the feud-game edge function
   // which selects randomly from the full DB set. We only fetch the count so
   // the admin panel can display an accurate number.
-  const [levels, tasks, settingsRes, feudCountRes] = await Promise.all([
+  const [levels, tasks, settingsRes, feudCountRes, feudActiveCountRes] = await Promise.all([
     supabase.from("membership_levels").select("*").order("sort_order", { ascending: true }),
     supabase.from("tasks").select("*").order("created_at", { ascending: false }),
     supabase.from("platform_settings").select("payload").maybeSingle(),
     supabase.from("feud_questions").select("id", { count: "exact", head: true }),
+    supabase.from("feud_questions").select("id", { count: "exact", head: true }).eq("status", "active"),
   ]);
   const { normalizeFeudConfig } = await import("./feudServices");
   update((db) => {
     if (Array.isArray(levels.data)) db.levels = levels.data.map(mapLevel);
-    // Store the real total question count so admin panels can display it
+    // Store real counts from DB so admin panels show accurate numbers
     if (typeof feudCountRes.count === "number") db.feudQuestionCount = feudCountRes.count;
+    if (typeof feudActiveCountRes.count === "number") db.feudActiveQuestionCount = feudActiveCountRes.count;
     if (Array.isArray(tasks.data)) db.tasks = tasks.data.map(mapTask);
     if (settingsRes.data?.payload) {
       db.settings = {
