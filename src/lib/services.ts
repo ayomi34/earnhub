@@ -317,32 +317,36 @@ async function executeDirectSpin(userId: string): Promise<SpinOutcome> {
     };
   }
 
-  try {
-    await supabase.from("spins").insert({
-      id: spinRecord.id,
-      user_id: spinRecord.userId,
-      segment_index: spinRecord.segmentIndex,
-      label: spinRecord.label,
-      reward_type: spinRecord.rewardType,
-      amount: spinRecord.amount,
-      status: spinRecord.status,
-      reference: spinRecord.reference,
+  const { error: spinInsertError } = await supabase.from("spins").insert({
+    id: spinRecord.id,
+    user_id: spinRecord.userId,
+    segment_index: spinRecord.segmentIndex,
+    label: spinRecord.label,
+    reward_type: spinRecord.rewardType,
+    amount: spinRecord.amount,
+    status: spinRecord.status,
+    reference: spinRecord.reference,
+  });
+  if (spinInsertError) {
+    throw new SvcError(`Failed to record spin: ${spinInsertError.message}`);
+  }
+
+  if (walletTx) {
+    const { error: txInsertError } = await supabase.from("wallet_transactions").insert({
+      id: walletTx.id,
+      user_id: walletTx.userId,
+      type: walletTx.type,
+      direction: walletTx.direction,
+      amount: walletTx.amount,
+      status: walletTx.status,
+      description: walletTx.description,
+      reference: walletTx.reference,
+      source_id: walletTx.sourceId,
     });
-    if (walletTx) {
-      await supabase.from("wallet_transactions").insert({
-        id: walletTx.id,
-        user_id: walletTx.userId,
-        type: walletTx.type,
-        direction: walletTx.direction,
-        amount: walletTx.amount,
-        status: walletTx.status,
-        description: walletTx.description,
-        reference: walletTx.reference,
-        source_id: walletTx.sourceId,
-      });
+    if (txInsertError) {
+      // Spin is already recorded; log the wallet credit failure but don't block the result.
+      console.error("[executeDirectSpin] wallet_transactions insert failed:", txInsertError.message);
     }
-  } catch {
-    // Handled via local state below
   }
 
   update((state) => {
@@ -466,6 +470,34 @@ export async function refreshSpinWinners() {
     update((state) => {
       state.spinWinners = winners;
     });
+  }
+}
+
+/** Re-fetches the authenticated user's spin records directly from Supabase
+ *  and updates the in-memory store. Call this after the wheel animation
+ *  finishes to guarantee the history reflects what is actually in the DB. */
+export async function refreshMySpins(userId: string): Promise<void> {
+  try {
+    const { data, error } = await supabase
+      .from("spins")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(100);
+    if (error) {
+      console.error("[refreshMySpins] fetch failed:", error.message);
+      return;
+    }
+    if (Array.isArray(data)) {
+      update((db) => {
+        // Replace only this user's spins; preserve any other users' records
+        // (relevant in admin views that may have loaded multiple users).
+        const others = db.spins.filter((s) => s.userId !== userId);
+        db.spins = [...data.map(mapSpin), ...others];
+      });
+    }
+  } catch (e) {
+    console.error("[refreshMySpins] unexpected error:", e);
   }
 }
 

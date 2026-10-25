@@ -174,8 +174,8 @@ export function Landing() {
             <div className="relative hidden md:block">
               <div className="absolute inset-0 -z-10 rounded-3xl bg-brand-100/50 blur-3xl" />
               <img
-                src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=720&q=80"
-                alt="Young professionals working on laptops and earning digitally"
+                src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=720&q=80"
+                alt="African professional woman working on a laptop"
                 className="relative w-full rounded-2xl object-cover shadow-2xl ring-1 ring-slate-200"
                 style={{ aspectRatio: "4/3" }}
               />
@@ -227,21 +227,11 @@ export function Landing() {
 
       {/* steps */}
       <section className="mx-auto max-w-6xl px-4 py-16 md:px-6">
-        <div className="grid items-center gap-10 md:grid-cols-2">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-brand">How it works</p>
-            <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">Three steps. No promises, just process.</h2>
-            <div className="mt-8"><Steps /></div>
-          </div>
-          <div className="relative hidden md:block">
-            <img
-              src="https://images.unsplash.com/photo-1551836022-deb4988cc6c0?w=640&q=80"
-              alt="Person completing digital tasks on a laptop"
-              className="w-full rounded-2xl object-cover shadow-xl ring-1 ring-slate-200"
-              style={{ aspectRatio: "4/3" }}
-            />
-          </div>
+        <div className="text-center mb-10">
+          <p className="text-xs font-semibold uppercase tracking-widest text-brand">How it works</p>
+          <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">Three steps. No promises, just process.</h2>
         </div>
+        <Steps />
       </section>
 
       {/* levels */}
@@ -277,7 +267,7 @@ export function Landing() {
       {/* final CTA */}
       <section className="relative border-t border-slate-100 overflow-hidden bg-brand">
         <img
-          src="https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=1400&q=60"
+          src="https://images.unsplash.com/photo-1531685250784-7569952593d2?w=1400&q=60"
           alt=""
           aria-hidden="true"
           className="absolute inset-0 h-full w-full object-cover opacity-10 mix-blend-luminosity"
@@ -299,22 +289,16 @@ export function Landing() {
 export function HowItWorks() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-14 md:px-6">
-      {/* page header with image */}
-      <div className="relative mb-10 overflow-hidden rounded-2xl bg-brand-50">
-        <img
-          src="https://images.unsplash.com/photo-1551836022-deb4988cc6c0?w=1200&q=75"
-          alt="Person doing digital work on a laptop"
-          className="h-48 w-full object-cover object-top md:h-64"
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-brand/80 to-transparent" />
-        <div className="absolute inset-0 flex flex-col justify-end p-6">
-          <p className="text-xs font-semibold uppercase tracking-widest text-green-200">How it works</p>
-          <h1 className="mt-1 text-3xl font-bold tracking-tight text-white">A transparent earning pipeline</h1>
-        </div>
+      {/* page header — clean, text-only */}
+      <div className="mb-10 border-b border-slate-100 pb-8">
+        <p className="text-xs font-semibold uppercase tracking-widest text-brand">How it works</p>
+        <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">
+          A transparent earning pipeline
+        </h1>
+        <p className="mt-4 max-w-2xl text-sm leading-relaxed text-slate-500">
+          No hidden mechanics. Here is exactly how money moves through EarnHub — and where it never comes from.
+        </p>
       </div>
-      <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-500">
-        No hidden mechanics. Here is exactly how money moves through EarnHub — and where it never comes from.
-      </p>
       <div className="mt-10"><Steps /></div>
 
       <div className="mt-12 space-y-4">

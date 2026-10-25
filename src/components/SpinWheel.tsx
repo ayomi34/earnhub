@@ -15,6 +15,7 @@ interface Props {
   winningIndex: number | null; // set once the server responds
   onSpin: () => void;
   disabled?: boolean;
+  onAnimationEnd?: () => void; // fired after the 5.2 s wheel animation completes
 }
 
 const START_ROTATION = -8; // slight rest tilt so the wheel feels natural
@@ -32,7 +33,7 @@ function targetRotation(index: number, count: number, currentRotation: number): 
   return currentRotation + 360 * 6 + delta;
 }
 
-export default function SpinWheel({ segments, spinning, winningIndex, onSpin, disabled }: Props) {
+export default function SpinWheel({ segments, spinning, winningIndex, onSpin, disabled, onAnimationEnd }: Props) {
   const count = Math.max(1, segments.length);
   const arc = 360 / count;
   const [rotation, setRotation] = useState(START_ROTATION);
@@ -55,6 +56,7 @@ export default function SpinWheel({ segments, spinning, winningIndex, onSpin, di
     const t = window.setTimeout(() => {
       setGlow(false);
       setCelebrate(true);
+      onAnimationEnd?.();
     }, 5200); // matches the CSS transition duration
     return () => window.clearTimeout(t);
   }, [winningIndex, count]);
@@ -81,7 +83,7 @@ export default function SpinWheel({ segments, spinning, winningIndex, onSpin, di
     <WheelShell
       paths={paths} rotation={rotation} spinning={spinning}
       glow={glow} celebrate={celebrate} winner={winner} isWin={isWin}
-      onSpin={onSpin} disabled={disabled}
+      onSpin={onSpin} disabled={disabled} onAnimationEnd={onAnimationEnd}
     />
   );
 }

@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Disc3, Hourglass, Timer, Trophy } from "lucide-react";
 import SpinWheel from "../components/SpinWheel";
 import { Badge, Button, Card, CardHeader, EmptyState, PageHead, StatusBadge, Td, Table, fmtDateTime, fmtN } from "../components/ui";
 import {
-  getMySpins, getRecentWinners, getSpinConfig, refreshSpinWinners, spinWheel,
+  getMySpins, getRecentWinners, getSpinConfig, refreshMySpins, refreshSpinWinners, spinWheel,
 } from "../lib/services";
 import { useAction, useData, useUser } from "../lib/store";
 
@@ -38,32 +38,51 @@ export function SpinPage() {
 
   const [spinning, setSpinning] = useState(false);
   const [winningIndex, setWinningIndex] = useState<number | null>(null);
+  // ID of the spin that is currently animating — hidden from history/stats
+  // until the wheel lands so the prize is not revealed prematurely.
+  const [pendingSpinId, setPendingSpinId] = useState<string | null>(null);
 
   useEffect(() => {
     void refreshSpinWinners();
   }, []);
 
+  // Suppress the new spin record from the display until the animation ends.
+  const displayedSpins = pendingSpinId
+    ? spins.filter((s) => s.id !== pendingSpinId)
+    : spins;
+
   const dayStart = new Date();
   dayStart.setHours(0, 0, 0, 0);
-  const todayReward = spins
+  const todayReward = displayedSpins
     .filter((s) => s.createdAt >= dayStart.getTime() && s.rewardType === "cash" && s.amount > 0)
     .reduce((sum, s) => sum + s.amount, 0);
+
+  // Called by SpinWheel once the 5.2 s animation completes.
+  const handleAnimationEnd = useCallback(() => {
+    setSpinning(false);
+    setPendingSpinId(null);
+    // Re-fetch from the database so the history reflects the persisted record.
+    void refreshMySpins(user.id);
+  }, [user.id]);
 
   const doSpin = async () => {
     if (spinning || !canSpinAgain) return;
     setSpinning(true);
+    setPendingSpinId(null);
     setWinningIndex(null);
     const result = await run(async () => {
       const { spin } = await spinWheel(user.id);
+      // Hide the new record from history/stats until the animation finishes.
+      setPendingSpinId(spin.id);
       setWinningIndex(spin.segmentIndex);
       void refreshSpinWinners();
-      window.setTimeout(() => setSpinning(false), 5200);
       return spin;
     }, undefined);
     if (result === null) {
       // run() already showed an error toast — reset so the user can retry.
       setWinningIndex(null);
       setSpinning(false);
+      setPendingSpinId(null);
     }
   };
 
@@ -101,6 +120,7 @@ export function SpinPage() {
             winningIndex={winningIndex}
             onSpin={() => void doSpin()}
             disabled={!canSpinAgain}
+            onAnimationEnd={handleAnimationEnd}
           />
 
           <div className="mt-6 text-center">
@@ -127,7 +147,7 @@ export function SpinPage() {
             <Card className="p-4">
               <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Total Wins</p>
               <p className="mt-1 text-lg font-bold text-slate-900">
-                {spins.filter((s) => s.rewardType !== "none").length}
+                {displayedSpins.filter((s) => s.rewardType !== "none").length}
               </p>
             </Card>
           </div>
@@ -158,11 +178,11 @@ export function SpinPage() {
       {/* ---------- history ---------- */}
       <Card className="mt-5">
         <CardHeader title="Your spin history" sub="Every spin is recorded with a unique reference" />
-        {spins.length === 0 ? (
+        {displayedSpins.length === 0 ? (
           <EmptyState icon={<Hourglass className="h-5 w-5" />} title="No spins yet" sub="Your first free spin is waiting." />
         ) : (
           <Table head={["Date", "Result", "Reward", "Status", "Reference"]}>
-            {spins.slice(0, 30).map((s) => (
+            {displayedSpins.slice(0, 30).map((s) => (
               <tr key={s.id}>
                 <Td className="whitespace-nowrap text-xs text-slate-400">{fmtDateTime(s.createdAt)}</Td>
                 <Td className="font-medium">{s.label}</Td>
