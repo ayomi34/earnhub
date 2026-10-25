@@ -278,12 +278,12 @@ export function DashShell({ children, admin = false }: { children: ReactNode; ad
           </div>
         </header>
 
-        <main className="mx-auto max-w-6xl px-4 py-6 pb-24 md:px-8 md:py-8 lg:pb-10">{children}</main>
+        <main className="mx-auto max-w-6xl px-4 py-6 pb-28 md:px-8 md:py-8 lg:pb-10">{children}</main>
       </div>
 
       {/* mobile bottom nav */}
       {!admin && (
-        <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-slate-200 bg-white lg:hidden">
+        <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-slate-200 bg-white pb-safe lg:hidden" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 0px)" }}>
           {[
             { to: "/app", label: "Home", icon: LayoutDashboard, end: true },
             { to: "/app/earn", label: "Earn", icon: Briefcase },
@@ -296,12 +296,12 @@ export function DashShell({ children, admin = false }: { children: ReactNode; ad
               <NavItem
                 key={item.to}
                 to={item.to}
-                className={`flex flex-col items-center gap-1 py-2.5 text-[10px] font-medium ${
-                  active ? "text-brand" : "text-slate-500"
+                className={`flex flex-col items-center gap-1 py-3 text-[10px] font-medium transition-colors ${
+                  active ? "text-brand" : "text-slate-500 hover:text-slate-700"
                 }`}
               >
-                <item.icon className="h-5 w-5" />
-                {item.label}
+                <item.icon className={`h-5 w-5 ${active ? "text-brand" : ""}`} />
+                <span className={active ? "text-brand font-semibold" : ""}>{item.label}</span>
               </NavItem>
             );
           })}

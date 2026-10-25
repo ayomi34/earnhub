@@ -8,7 +8,11 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
  *              points computed from the DB answer bank (client can't inflate),
  *              reward tiers re-evaluated on completion, wallet credit + notify
  *  - timeout : finalize with the stored score after the timer has expired
- * The client only visualizes; tampering with it changes nothing. */
+ * The client only visualizes; tampering with it changes nothing.
+ *
+ * Questions are selected via SQL ORDER BY RANDOM() to bypass PostgREST's
+ * default 1000-row cap — the full bank (10k+ questions) is always eligible.
+ * Per-user question deduplication is enforced via feud_question_attempts. */
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -140,25 +144,49 @@ Deno.serve(async (req) => {
         .eq("id", stale.id);
     }
 
-    /* questions */
-    const { data: questions } = await admin
-      .from("feud_questions").select("*")
-      .eq("status", "active");
-    if (!questions || questions.length < 1)
+    /* -----------------------------------------------------------------------
+     * Question selection: use SQL random sampling across the FULL question bank.
+     * This bypasses PostgREST's default 1000-row cap by doing the selection
+     * entirely in the database engine, then excludes questions the user has
+     * already attempted in previous sessions.
+     * --------------------------------------------------------------------- */
+    const count = Math.max(1, Number(cfg.questionsPerGame) || 4);
+
+    // First, check how many unattempted questions are available
+    const { data: availCount } = await admin.rpc("count_unattempted_feud_questions", {
+      p_user_id: user.id,
+    });
+
+    // If fewer unattempted questions than needed, clear the user's attempt history
+    // (full cycle through the bank) and start fresh
+    const unattemptedCount = Number(availCount ?? 0);
+    if (unattemptedCount < count) {
+      if (unattemptedCount === 0) {
+        // Check if there are ANY active questions at all
+        const { count: totalActive } = await admin
+          .from("feud_questions")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "active");
+
+        if ((totalActive ?? 0) < 1)
+          return json({ error: "No active questions are available right now. Please check back later!" }, 404);
+
+        // User has seen all questions — reset their history so they can play again
+        await admin.from("feud_question_attempts").delete().eq("user_id", user.id);
+      }
+      // If some but fewer than needed, just use what's available (don't error)
+    }
+
+    // Select random unattempted questions via SQL — works on the full bank
+    const { data: selectedRows, error: selectErr } = await admin.rpc("pick_unattempted_feud_questions", {
+      p_user_id: user.id,
+      p_count: count,
+    });
+
+    if (selectErr || !selectedRows || selectedRows.length === 0)
       return json({ error: "No active questions are available right now. Please check back later!" }, 404);
 
-    const seenPrompts = new Set<string>();
-    const uniqueQuestions = questions.filter((question: any) => {
-      const prompt = String(question.prompt || "").trim().replace(/\s+/g, " ").toLowerCase();
-      if (!prompt || seenPrompts.has(prompt)) return false;
-      seenPrompts.add(prompt);
-      return true;
-    });
-    if (uniqueQuestions.length === 0)
-      return json({ error: "No active questions are available right now. Please check back later!" }, 404);
-    const shuffled = [...uniqueQuestions].sort(() => Math.random() - 0.5);
-    const count = Math.min(Math.max(1, Number(cfg.questionsPerGame) || 4), shuffled.length);
-    const selected = shuffled.slice(0, count);
+    const selected: any[] = selectedRows;
 
     const targetPoints = Math.max(50, Number(cfg.targetPoints) || 200);
     const { data: session, error: insertError } = await admin.from("feud_sessions").insert({
@@ -175,6 +203,14 @@ Deno.serve(async (req) => {
     }).select().single();
     if (insertError || !session)
       return json({ error: insertError?.message || "Could not start the game" }, 500);
+
+    // Record attempt history for these questions (idempotent — unique constraint handles duplicates)
+    const attemptRows = selected.map((q) => ({
+      user_id: user.id,
+      question_id: q.id,
+      session_id: session.id,
+    }));
+    await admin.from("feud_question_attempts").upsert(attemptRows, { onConflict: "user_id,question_id", ignoreDuplicates: true });
 
     return json({
       session: mapSession(session),
@@ -335,5 +371,3 @@ function mapSession(row: any) {
     rounds: Array.isArray(row.rounds) ? row.rounds : [],
   };
 }
-
-

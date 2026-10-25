@@ -556,15 +556,21 @@ export async function adminSetSpinReward(
 /* ================= HYDRATION (Supabase -> cache) ================= */
 
 export async function hydrateContentFromSupabase() {
-  const [levels, tasks, settingsRes, feudQuestionsRes] = await Promise.all([
+  // Note: feud_questions are NOT loaded into the in-memory cache — the bank
+  // has 10k+ rows and questions are served by the feud-game edge function
+  // which selects randomly from the full DB set. We only fetch the count so
+  // the admin panel can display an accurate number.
+  const [levels, tasks, settingsRes, feudCountRes] = await Promise.all([
     supabase.from("membership_levels").select("*").order("sort_order", { ascending: true }),
     supabase.from("tasks").select("*").order("created_at", { ascending: false }),
     supabase.from("platform_settings").select("payload").maybeSingle(),
-    supabase.from("feud_questions").select("*").order("created_at", { ascending: false }),
+    supabase.from("feud_questions").select("id", { count: "exact", head: true }),
   ]);
-  const { mapFeudQuestion, normalizeFeudConfig } = await import("./feudServices");
+  const { normalizeFeudConfig } = await import("./feudServices");
   update((db) => {
     if (Array.isArray(levels.data)) db.levels = levels.data.map(mapLevel);
+    // Store the real total question count so admin panels can display it
+    if (typeof feudCountRes.count === "number") db.feudQuestionCount = feudCountRes.count;
     if (Array.isArray(tasks.data)) db.tasks = tasks.data.map(mapTask);
     if (settingsRes.data?.payload) {
       db.settings = {
@@ -573,9 +579,6 @@ export async function hydrateContentFromSupabase() {
         spin: normalizeSpinConfig((settingsRes.data.payload as any).spin),
         feud: normalizeFeudConfig((settingsRes.data.payload as any).feud),
       };
-    }
-    if (Array.isArray(feudQuestionsRes.data) && feudQuestionsRes.data.length > 0) {
-      db.feudQuestions = feudQuestionsRes.data.map(mapFeudQuestion);
     }
   });
 }

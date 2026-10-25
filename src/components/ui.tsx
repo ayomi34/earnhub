@@ -143,14 +143,14 @@ export function StatusBadge({ status }: { status: string }) {
 
 /* ---------- table ---------- */
 
-export function Table({ head, children }: { head: ReactNode[]; children: ReactNode }) {
+export function Table({ head, children, compact }: { head: ReactNode[]; children: ReactNode; compact?: boolean }) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[640px] text-left text-sm">
+      <table className={`w-full text-left text-sm ${compact ? "" : "min-w-[640px]"}`}>
         <thead>
           <tr className="border-b border-slate-100 text-[11px] uppercase tracking-wide text-slate-400">
             {head.map((h, i) => (
-              <th key={i} className="px-5 py-3 font-medium">{h}</th>
+              <th key={i} className={`py-3 font-medium ${compact ? "px-4" : "px-5"}`}>{h}</th>
             ))}
           </tr>
         </thead>
@@ -160,8 +160,8 @@ export function Table({ head, children }: { head: ReactNode[]; children: ReactNo
   );
 }
 
-export const Td = ({ children, className = "" }: { children: ReactNode; className?: string }) => (
-  <td className={`px-5 py-3.5 align-middle text-slate-700 ${className}`}>{children}</td>
+export const Td = ({ children, className = "", compact }: { children: ReactNode; className?: string; compact?: boolean }) => (
+  <td className={`${compact ? "px-4 py-3" : "px-5 py-3.5"} align-middle text-slate-700 ${className}`}>{children}</td>
 );
 
 /* ---------- misc ---------- */

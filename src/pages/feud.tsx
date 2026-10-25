@@ -337,35 +337,23 @@ export function FeudGamePage() {
               <p className="mt-1 max-w-xs text-xs text-slate-500">Play your first game to start earning rewards.</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[560px] text-left text-sm">
-                <thead>
-                  <tr className="border-b border-slate-100 text-[11px] uppercase tracking-wide text-slate-400">
-                    <th className="px-5 py-3 font-medium">Score</th>
-                    <th className="px-5 py-3 font-medium">Reward</th>
-                    <th className="px-5 py-3 font-medium">Status</th>
-                    <th className="px-5 py-3 font-medium">When</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {mySessions.slice(0, 10).map((s) => (
-                    <tr key={s.id}>
-                      <td className="px-5 py-3.5 font-semibold text-slate-700">{s.score}/{s.targetPoints}</td>
-                      <td className="px-5 py-3.5 font-semibold text-slate-700">
-                        {s.rewardAmount > 0 ? fmtN(s.rewardAmount) : "—"}
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <Badge tone={s.rewardAmount > 0 ? "green" : "slate"}>
-                          {s.rewardAmount > 0 ? "Rewarded" : s.completed ? "Completed" : "In progress"}
-                        </Badge>
-                      </td>
-                      <td className="px-5 py-3.5 text-xs text-slate-400">
-                        {fmtDateTime(s.completedAt || s.startedAt)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="divide-y divide-slate-100">
+              {mySessions.slice(0, 10).map((s) => (
+                <div key={s.id} className="flex items-center justify-between gap-3 px-4 py-3.5">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-800">{s.score}/{s.targetPoints} pts</p>
+                    <p className="mt-0.5 text-xs text-slate-400">{fmtDateTime(s.completedAt || s.startedAt)}</p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    {s.rewardAmount > 0 && (
+                      <span className="text-sm font-bold text-brand">{fmtN(s.rewardAmount)}</span>
+                    )}
+                    <Badge tone={s.rewardAmount > 0 ? "green" : "slate"}>
+                      {s.rewardAmount > 0 ? "Rewarded" : s.completed ? "Done" : "In progress"}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </Card>

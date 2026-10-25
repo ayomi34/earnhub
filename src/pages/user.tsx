@@ -83,15 +83,17 @@ export function Dashboard() {
               action={<Button size="sm" onClick={() => navigate(level ? "/app/earn" : "/app/membership")}>{level ? "Browse tasks" : "Choose membership"}</Button>}
             />
           ) : (
-            <Table head={["Description", "Type", "Amount", "Date"]}>
+            <Table head={["Description", "Amount", "Date"]} compact>
               {recentTx.map((t) => (
                 <tr key={t.id}>
-                  <Td className="max-w-[220px] truncate font-medium">{t.description}</Td>
-                  <Td><Badge tone={t.direction === "credit" ? "green" : "slate"}>{t.type.replace("_", " ")}</Badge></Td>
-                  <Td className={`font-semibold ${t.direction === "credit" ? "text-brand" : "text-slate-700"}`}>
+                  <Td compact className="max-w-[160px]">
+                    <span className="block truncate font-medium text-slate-800">{t.description}</span>
+                    <Badge tone={t.direction === "credit" ? "green" : "slate"}>{t.type.replace("_", " ")}</Badge>
+                  </Td>
+                  <Td compact className={`whitespace-nowrap font-semibold ${t.direction === "credit" ? "text-brand" : "text-slate-700"}`}>
                     {t.direction === "credit" ? "+" : "−"}{fmtN(t.amount)}
                   </Td>
-                  <Td className="text-xs text-slate-400">{fmtDate(t.createdAt)}</Td>
+                  <Td compact className="whitespace-nowrap text-xs text-slate-400">{fmtDate(t.createdAt)}</Td>
                 </tr>
               ))}
             </Table>

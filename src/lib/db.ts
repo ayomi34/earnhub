@@ -170,6 +170,7 @@ function emptyDB(): DB {
     spins: [],
     spinWinners: [],
     feudQuestions: [...DEFAULT_FEUD_QUESTIONS],
+    feudQuestionCount: 0,
     feudSessions: [],
     settings: {
       platformName: "EarnHub",

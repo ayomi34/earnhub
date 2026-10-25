@@ -11,6 +11,7 @@ import {
 } from "../lib/feudServices";
 import { getAllUsers, listLevels } from "../lib/services";
 import { useAction, useData, useUser } from "../lib/store";
+import { read } from "../lib/db";
 import type { FeudAnswer, FeudConfig, FeudQuestion, FeudScoreTier, FeudGameSession, MembershipLevel } from "../lib/types";
 
 interface SessionRow extends FeudGameSession {
@@ -46,6 +47,8 @@ export function AdminFeud() {
     })
   );
 
+  // Use the real DB count (populated by count query on hydration, not row fetch)
+  const totalQuestionCount = useData(() => read().feudQuestionCount || questions.length);
   const activeQuestions = questions.filter((q) => q.status === "active").length;
   const completedSessions = sessions.filter((s) => s.completed);
   const totalRewards = completedSessions.reduce((sum, s) => sum + s.rewardAmount, 0);
@@ -116,7 +119,7 @@ export function AdminFeud() {
         <Card className="p-4 md:p-5">
           <p className="text-xs font-medium text-slate-500">Active questions</p>
           <p className="mt-1.5 text-lg font-bold text-slate-900">{activeQuestions}</p>
-          <p className="mt-0.5 text-[11px] text-slate-400">{questions.length} total in bank</p>
+          <p className="mt-0.5 text-[11px] text-slate-400">{totalQuestionCount.toLocaleString()} total in bank</p>
         </Card>
         <Card className="p-4 md:p-5">
           <p className="text-xs font-medium text-slate-500">Games played</p>
@@ -167,7 +170,7 @@ export function AdminFeud() {
 
 
         <Card>
-          <CardHeader title="Questions" sub={`${activeQuestions} active · ${questions.length} total`} />
+          <CardHeader title="Questions" sub={`${activeQuestions} active · ${totalQuestionCount.toLocaleString()} total in bank`} />
           {questions.length === 0 ? (
             <EmptyState
               icon={<MessageSquare className="h-5 w-5" />}
