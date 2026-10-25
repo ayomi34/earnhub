@@ -349,27 +349,32 @@ async function executeDirectSpin(userId: string): Promise<SpinOutcome> {
     }
   }
 
+  const notifId = crypto.randomUUID();
+  const notifTitle = rewardType === "cash" && amount > 0 ? "Daily spin reward" : "Daily spin";
+  const notifBody = rewardType === "cash" && amount > 0
+    ? `You won ${segment.label} on the daily spin! Reference ${reference}. The reward has been credited to your wallet.`
+    : rewardType === "bonus_task"
+    ? "You won a bonus task slot on the daily spin."
+    : "No reward this time — your next free spin is available in 24 hours.";
+
   update((state) => {
     state.spins = [spinRecord, ...state.spins.filter((s) => s.id !== spinRecord.id)];
     if (walletTx) {
       state.walletTx = [walletTx, ...state.walletTx.filter((t) => t.id !== walletTx!.id)];
     }
     state.notifications = [
-      {
-        id: crypto.randomUUID(),
-        userId,
-        type: "system",
-        title: rewardType === "cash" && amount > 0 ? "Daily spin reward" : "Daily spin",
-        body: rewardType === "cash" && amount > 0
-          ? `You won ${segment.label} on the daily spin! Reference ${reference}. The reward has been credited to your wallet.`
-          : rewardType === "bonus_task"
-          ? "You won a bonus task slot on the daily spin."
-          : "No reward this time — your next free spin is available in 24 hours.",
-        read: false,
-        createdAt: Date.now(),
-      },
+      { id: notifId, userId, type: "system", title: notifTitle, body: notifBody, read: false, createdAt: Date.now() },
       ...state.notifications,
     ];
+  });
+
+  // Persist to DB so the notification survives reload; best-effort fire-and-forget.
+  // The Realtime handler deduplicates by id so the UI won't double-show it.
+  supabase.from("notifications").insert({
+    id: notifId, user_id: userId, type: "system",
+    title: notifTitle, body: notifBody, read: false,
+  }).then(({ error: e }) => {
+    if (e) console.warn("[executeDirectSpin] Could not persist notification:", e.message);
   });
 
   return { spin: spinRecord, nextSpinAt: Date.now() + DAY_MS };
@@ -585,6 +590,57 @@ export async function hydrateContentFromSupabase() {
   });
 }
 
+/* ================= REALTIME: NOTIFICATIONS ================= */
+
+/** Module-level channel handle so we only subscribe once per session. */
+let _notifChannel: ReturnType<typeof supabase.channel> | null = null;
+
+/** Start (or restart) a live feed of notifications for the given user.
+ *  Called once from hydrateAll after the session userId is known. */
+function subscribeToNotifications(userId: string) {
+  // Tear down any existing channel first (handles re-login / user switch).
+  if (_notifChannel) {
+    void supabase.removeChannel(_notifChannel);
+    _notifChannel = null;
+  }
+  _notifChannel = supabase
+    .channel(`notifs:${userId}`)
+    .on(
+      "postgres_changes",
+      { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` },
+      (payload) => {
+        const n = mapNotification(payload.new);
+        update((db) => {
+          // Deduplicate: the frontend may have already added this to the cache
+          // (e.g. from an optimistic local insert with the same id).
+          if (!db.notifications.some((x) => x.id === n.id)) {
+            db.notifications.unshift(n);
+          }
+        });
+      },
+    )
+    .on(
+      "postgres_changes",
+      { event: "UPDATE", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` },
+      (payload) => {
+        const n = mapNotification(payload.new);
+        update((db) => {
+          const idx = db.notifications.findIndex((x) => x.id === n.id);
+          if (idx >= 0) db.notifications[idx] = n;
+        });
+      },
+    )
+    .subscribe();
+}
+
+/** Tear down the notification channel on logout. */
+function unsubscribeFromNotifications() {
+  if (_notifChannel) {
+    void supabase.removeChannel(_notifChannel);
+    _notifChannel = null;
+  }
+}
+
 /** Pulls every table the current session may read. RLS scopes rows
  *  automatically: members see their own data, admins see everything. */
 export async function hydrateAll() {
@@ -593,6 +649,7 @@ export async function hydrateAll() {
   const { data: { session } } = await supabase.auth.getSession();
   const userId = session?.user?.id ?? null;
   if (!userId) {
+    unsubscribeFromNotifications();
     update((db) => {
       db.session = null;
       db.profiles = [];
@@ -649,6 +706,9 @@ export async function hydrateAll() {
     if (Array.isArray(spins.data)) db.spins = spins.data.map(mapSpin);
     if (Array.isArray(feudSessionsRes.data)) db.feudSessions = feudSessionsRes.data.map(mapFeudSession);
   });
+
+  // Ensure we have a live feed of new notifications for this user.
+  subscribeToNotifications(userId);
 }
 
 export async function hydrateSessionFromSupabase() {

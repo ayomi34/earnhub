@@ -467,13 +467,18 @@ export async function submitFeudAnswer(
     rounds: updatedRounds,
   };
 
+  // Pre-generate IDs so both the local cache and the DB row share the same id
+  // → Realtime INSERT handler deduplicates by id and won't double-show.
+  const notifId = isGameComplete && rewardAmount > 0 ? uid() : null;
+  const txId    = isGameComplete && rewardAmount > 0 ? uid() : null;
+  const txRef   = isGameComplete && rewardAmount > 0 ? genRef("FEUD") : null;
+
   update((state) => {
     state.feudSessions = state.feudSessions.map((s) => (s.id === sessionId ? updatedSession : s));
 
-    if (isGameComplete && rewardAmount > 0) {
-      const txRef = genRef("FEUD");
+    if (isGameComplete && rewardAmount > 0 && txId && txRef && notifId) {
       const tx: WalletTx = {
-        id: uid(),
+        id: txId,
         userId,
         type: "feud_reward",
         direction: "credit",
@@ -487,7 +492,7 @@ export async function submitFeudAnswer(
       state.walletTx.unshift(tx);
 
       state.notifications.unshift({
-        id: uid(),
+        id: notifId,
         userId,
         type: "task",
         title: "Survey Feud Reward Credited!",
@@ -514,8 +519,8 @@ export async function submitFeudAnswer(
       rounds: updatedSession.rounds,
     });
 
-    if (isGameComplete && rewardAmount > 0) {
-      const tx = read().walletTx.find((t) => t.sourceId === sessionId);
+    if (isGameComplete && rewardAmount > 0 && txId && txRef && notifId) {
+      const tx = read().walletTx.find((t) => t.id === txId);
       if (tx) {
         await supabase.from("wallet_transactions").insert({
           id: tx.id,
@@ -527,6 +532,19 @@ export async function submitFeudAnswer(
           description: tx.description,
           reference: tx.reference,
           source_id: tx.sourceId,
+        }).then(({ error: e }) => {
+          if (e) console.warn("[feud fallback] wallet_transactions insert failed:", e.message);
+        });
+        // Persist notification so it survives reload.
+        await supabase.from("notifications").insert({
+          id: notifId,
+          user_id: userId,
+          type: "task",
+          title: "Survey Feud Reward Credited!",
+          body: `Congratulations! You scored ${newScore} points in Survey Feud and earned ₦${rewardAmount.toLocaleString()}. It has been credited to your wallet.`,
+          read: false,
+        }).then(({ error: e }) => {
+          if (e) console.warn("[feud fallback] notification insert failed:", e.message);
         });
       }
     }
@@ -595,27 +613,30 @@ export async function completeFeudGameOnTimeout(userId: string, sessionId: strin
     timeSpentSeconds: timeSpent,
   };
 
+  const timeoutNotifId = rewardAmount > 0 ? uid() : null;
+  const timeoutTxId    = rewardAmount > 0 ? uid() : null;
+  const timeoutTxRef   = rewardAmount > 0 ? genRef("FEUD") : null;
+
   update((state) => {
     state.feudSessions = state.feudSessions.map((s) => (s.id === sessionId ? updatedSession : s));
 
-    if (rewardAmount > 0) {
-      const txRef = genRef("FEUD");
+    if (rewardAmount > 0 && timeoutTxId && timeoutTxRef && timeoutNotifId) {
       const tx: WalletTx = {
-        id: uid(),
+        id: timeoutTxId,
         userId,
         type: "feud_reward",
         direction: "credit",
         amount: rewardAmount,
         status: "approved",
         description: `Survey Feud Reward (${session.score}/${session.targetPoints} pts)`,
-        reference: txRef,
+        reference: timeoutTxRef,
         sourceId: sessionId,
         createdAt: Date.now(),
       };
       state.walletTx.unshift(tx);
 
       state.notifications.unshift({
-        id: uid(),
+        id: timeoutNotifId,
         userId,
         type: "task",
         title: "Survey Feud Reward Credited!",
@@ -641,6 +662,32 @@ export async function completeFeudGameOnTimeout(userId: string, sessionId: strin
       question_ids: updatedSession.questionIds,
       rounds: updatedSession.rounds,
     });
+
+    if (rewardAmount > 0 && timeoutTxId && timeoutTxRef && timeoutNotifId) {
+      await supabase.from("wallet_transactions").insert({
+        id: timeoutTxId,
+        user_id: userId,
+        type: "feud_reward",
+        direction: "credit",
+        amount: rewardAmount,
+        status: "approved",
+        description: `Survey Feud Reward (${session.score}/${session.targetPoints} pts)`,
+        reference: timeoutTxRef,
+        source_id: sessionId,
+      }).then(({ error: e }) => {
+        if (e) console.warn("[feud timeout] wallet_transactions insert failed:", e.message);
+      });
+      await supabase.from("notifications").insert({
+        id: timeoutNotifId,
+        user_id: userId,
+        type: "task",
+        title: "Survey Feud Reward Credited!",
+        body: `You scored ${session.score} points in Survey Feud and earned ₦${rewardAmount.toLocaleString()}.`,
+        read: false,
+      }).then(({ error: e }) => {
+        if (e) console.warn("[feud timeout] notification insert failed:", e.message);
+      });
+    }
   } catch (e) {
     console.warn("Could not sync feud timeout session:", e);
   }
