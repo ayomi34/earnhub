@@ -144,30 +144,62 @@ export function Landing() {
   return (
     <>
       {/* hero */}
-      <section className="border-b border-slate-100 bg-gradient-to-b from-brand-50/60 to-white">
+      <section className="border-b border-slate-100 bg-gradient-to-b from-brand-50/60 to-white overflow-hidden">
         <div className="mx-auto max-w-6xl px-4 py-16 md:px-6 md:py-24">
-          <div className="max-w-2xl">
-            <Badge tone="green">
-              <ShieldCheck className="h-3 w-3" /> Legitimate tasks · Manual review · Bank payouts
-            </Badge>
-            <h1 className="mt-5 text-4xl font-bold leading-[1.08] tracking-tight text-slate-900 md:text-[52px]">
-              Turn Your Time Into <span className="text-brand">Digital Earnings</span>
-            </h1>
-            <p className="mt-5 max-w-xl text-base leading-relaxed text-slate-600 md:text-lg">
-              Complete legitimate digital tasks, earn rewards, and manage your
-              earnings from one simple platform.
-            </p>
-            <div className="mt-8 flex flex-wrap items-center gap-3">
-              <Link to="/register" className="inline-flex items-center gap-2 rounded-lg bg-brand px-6 py-3.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-dark">
-                Get Started <ArrowRight className="h-4 w-4" />
-              </Link>
-              <Link to="/how-it-works" className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-6 py-3.5 text-sm font-semibold text-slate-700 transition-colors hover:border-brand hover:text-brand">
-                How It Works
-              </Link>
+          <div className="grid items-center gap-12 md:grid-cols-2">
+            <div>
+              <Badge tone="green">
+                <ShieldCheck className="h-3 w-3" /> Legitimate tasks · Manual review · Bank payouts
+              </Badge>
+              <h1 className="mt-5 text-4xl font-bold leading-[1.08] tracking-tight text-slate-900 md:text-[52px]">
+                Turn Your Time Into <span className="text-brand">Digital Earnings</span>
+              </h1>
+              <p className="mt-5 max-w-xl text-base leading-relaxed text-slate-600 md:text-lg">
+                Complete legitimate digital tasks, earn rewards, and manage your
+                earnings from one simple platform.
+              </p>
+              <div className="mt-8 flex flex-wrap items-center gap-3">
+                <Link to="/register" className="inline-flex items-center gap-2 rounded-lg bg-brand px-6 py-3.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-dark">
+                  Get Started <ArrowRight className="h-4 w-4" />
+                </Link>
+                <Link to="/how-it-works" className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-6 py-3.5 text-sm font-semibold text-slate-700 transition-colors hover:border-brand hover:text-brand">
+                  How It Works
+                </Link>
+              </div>
+              <p className="mt-5 text-xs text-slate-400">
+                Membership from {fmtN(min)} · Withdraw to any Nigerian bank from the minimum threshold
+              </p>
             </div>
-            <p className="mt-5 text-xs text-slate-400">
-              Membership from {fmtN(min)} · Withdraw to any Nigerian bank from the minimum threshold
-            </p>
+            {/* hero image */}
+            <div className="relative hidden md:block">
+              <div className="absolute inset-0 -z-10 rounded-3xl bg-brand-100/50 blur-3xl" />
+              <img
+                src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=720&q=80"
+                alt="Young professionals working on laptops and earning digitally"
+                className="relative w-full rounded-2xl object-cover shadow-2xl ring-1 ring-slate-200"
+                style={{ aspectRatio: "4/3" }}
+              />
+              {/* floating earnings badge */}
+              <div className="absolute -bottom-4 -left-4 flex items-center gap-3 rounded-2xl bg-white p-3.5 shadow-xl ring-1 ring-slate-100">
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand text-white">
+                  <Wallet className="h-5 w-5" />
+                </span>
+                <div>
+                  <p className="text-[11px] text-slate-400">Latest payout</p>
+                  <p className="text-sm font-bold text-slate-900">₦14,200 paid</p>
+                </div>
+              </div>
+              {/* floating task badge */}
+              <div className="absolute -top-4 -right-4 flex items-center gap-2 rounded-2xl bg-white p-3 shadow-xl ring-1 ring-slate-100">
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-brand">
+                  <ClipboardCheck className="h-4 w-4" />
+                </span>
+                <div>
+                  <p className="text-[11px] text-slate-400">Tasks reviewed</p>
+                  <p className="text-sm font-bold text-slate-900">12,400+</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -176,9 +208,9 @@ export function Landing() {
       <section className="border-b border-slate-100">
         <div className="mx-auto grid max-w-6xl gap-6 px-4 py-10 sm:grid-cols-3 md:px-6">
           {[
-            { icon: ClipboardCheck, title: "Work-verified earnings", desc: "Every reward is credited only after a human reviewer approves your submission." },
-            { icon: Wallet, title: "Real ledger wallet", desc: "Pending, available and withdrawn balances are computed from an auditable ledger." },
-            { icon: Smartphone, title: "Paid to your bank", desc: "Withdraw to any Nigerian bank account once you reach the minimum threshold." },
+            { icon: ClipboardCheck, title: "Work-verified earnings", desc: "Every reward is credited only after a human reviewer approves your submission.", img: "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=200&q=70" },
+            { icon: Wallet, title: "Real ledger wallet", desc: "Pending, available and withdrawn balances are computed from an auditable ledger.", img: "https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=200&q=70" },
+            { icon: Smartphone, title: "Paid to your bank", desc: "Withdraw to any Nigerian bank account once you reach the minimum threshold.", img: "https://images.unsplash.com/photo-1616803689943-5601631c7fec?w=200&q=70" },
           ].map((f) => (
             <div key={f.title} className="flex gap-3.5">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand">
@@ -195,9 +227,21 @@ export function Landing() {
 
       {/* steps */}
       <section className="mx-auto max-w-6xl px-4 py-16 md:px-6">
-        <p className="text-xs font-semibold uppercase tracking-widest text-brand">How it works</p>
-        <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">Three steps. No promises, just process.</h2>
-        <div className="mt-8"><Steps /></div>
+        <div className="grid items-center gap-10 md:grid-cols-2">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-brand">How it works</p>
+            <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">Three steps. No promises, just process.</h2>
+            <div className="mt-8"><Steps /></div>
+          </div>
+          <div className="relative hidden md:block">
+            <img
+              src="https://images.unsplash.com/photo-1551836022-deb4988cc6c0?w=640&q=80"
+              alt="Person completing digital tasks on a laptop"
+              className="w-full rounded-2xl object-cover shadow-xl ring-1 ring-slate-200"
+              style={{ aspectRatio: "4/3" }}
+            />
+          </div>
+        </div>
       </section>
 
       {/* levels */}
@@ -231,8 +275,14 @@ export function Landing() {
       </section>
 
       {/* final CTA */}
-      <section className="border-t border-slate-100 bg-brand">
-        <div className="mx-auto max-w-6xl px-4 py-14 text-center md:px-6">
+      <section className="relative border-t border-slate-100 overflow-hidden bg-brand">
+        <img
+          src="https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=1400&q=60"
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 h-full w-full object-cover opacity-10 mix-blend-luminosity"
+        />
+        <div className="relative mx-auto max-w-6xl px-4 py-14 text-center md:px-6">
           <h2 className="text-2xl font-bold tracking-tight text-white md:text-3xl">Ready to do real work for real naira?</h2>
           <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-green-100">
             Create your account, verify your email, and pick a membership level to open your task catalogue.
@@ -249,8 +299,19 @@ export function Landing() {
 export function HowItWorks() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-14 md:px-6">
-      <p className="text-xs font-semibold uppercase tracking-widest text-brand">How it works</p>
-      <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-900">A transparent earning pipeline</h1>
+      {/* page header with image */}
+      <div className="relative mb-10 overflow-hidden rounded-2xl bg-brand-50">
+        <img
+          src="https://images.unsplash.com/photo-1551836022-deb4988cc6c0?w=1200&q=75"
+          alt="Person doing digital work on a laptop"
+          className="h-48 w-full object-cover object-top md:h-64"
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-brand/80 to-transparent" />
+        <div className="absolute inset-0 flex flex-col justify-end p-6">
+          <p className="text-xs font-semibold uppercase tracking-widest text-green-200">How it works</p>
+          <h1 className="mt-1 text-3xl font-bold tracking-tight text-white">A transparent earning pipeline</h1>
+        </div>
+      </div>
       <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-500">
         No hidden mechanics. Here is exactly how money moves through EarnHub — and where it never comes from.
       </p>
