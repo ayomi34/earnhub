@@ -108,9 +108,31 @@ function WithdrawModal({ open, onClose }: { open: boolean; onClose: () => void }
         <span className="text-sm text-green-900">Available balance</span>
         <span className="text-lg font-bold text-green-900">{fmtN(bal.available)}</span>
       </div>
-      <p className="mb-4 text-xs text-slate-600">
-        Withdrawals require 3 active referrals who have activated a membership. Your progress: {referralStats.active}/3.
-      </p>
+
+      {/* Referral gate progress */}
+      {referralStats.active < 3 ? (
+        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+          <div className="flex items-center justify-between text-xs font-semibold text-amber-800">
+            <span>Referral requirement to withdraw</span>
+            <span>{referralStats.active}/3 active</span>
+          </div>
+          <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-amber-200">
+            <div
+              className="h-2 rounded-full bg-amber-500 transition-all duration-300"
+              style={{ width: `${Math.round((referralStats.active / 3) * 100)}%` }}
+            />
+          </div>
+          <p className="mt-2 text-[11px] leading-relaxed text-amber-700">
+            You need <strong>{3 - referralStats.active} more</strong> referral{3 - referralStats.active !== 1 ? "s" : ""} who have activated a paid membership before you can request a withdrawal.{" "}
+            Share your referral link to unlock this.
+          </p>
+        </div>
+      ) : (
+        <div className="mb-4 flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-xs font-medium text-green-800">
+          <span className="flex h-4 w-4 items-center justify-center rounded-full bg-green-500 text-white text-[10px]">✓</span>
+          Referral requirement met — {referralStats.active} active referral{referralStats.active !== 1 ? "s" : ""}
+        </div>
+      )}
       <div className="space-y-4">
         <Field label="Bank">
           <Select value={form.bank} onChange={(e) => setForm({ ...form, bank: e.target.value })}>
