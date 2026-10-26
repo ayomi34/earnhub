@@ -7,7 +7,7 @@ import {
   Landing, HowItWorks, LevelsPage, FaqPage, TermsPage, PrivacyPage, ContactPage,
 } from "./pages/public";
 import { Login, Register, VerifyEmail, Forgot, ResetPassword } from "./pages/auth";
-import { Dashboard, Earn, MyTasks } from "./pages/user";
+import { Dashboard, Earn, MyTasks, GamesPage, LeaderboardPage } from "./pages/user";
 import { WalletPage, Transactions, Referrals, MembershipPage } from "./pages/account";
 import { SpinPage } from "./pages/spin";
 import { FeudGamePage } from "./pages/feud";
@@ -103,6 +103,8 @@ export default function App() {
     "/app/feud": <FeudGamePage />,
     "/app/earn": <Earn />,
     "/app/tasks": <MyTasks />,
+    "/app/games": <GamesPage />,
+    "/app/leaderboard": <LeaderboardPage />,
     "/app/wallet": <WalletPage />,
     "/app/transactions": <Transactions />,
     "/app/referrals": <Referrals />,
