@@ -295,7 +295,7 @@ export function Referrals() {
               <tr key={r.id}>
                 <Td className="font-medium">{r.name}</Td>
                 <Td className="text-xs text-slate-400">{fmtDate(r.joined)}</Td>
-                <Td>{r.status === "active" ? <Badge tone="green">Active</Badge> : <Badge tone="amber">Registered</Badge>}</Td>
+                <Td>{r.effectiveStatus === "active" ? <Badge tone="green">Active</Badge> : <Badge tone="amber">Registered</Badge>}</Td>
                 <Td className="font-semibold text-brand">{fmtN(r.earned)}</Td>
               </tr>
             ))}

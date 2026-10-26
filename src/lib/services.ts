@@ -1201,9 +1201,14 @@ export async function requestWithdrawal(
 export function getReferralStats(userId: string) {
   const db = read();
   const rows = db.referrals.filter((r) => r.referrerId === userId);
+  // A referral is "active" if the referral row itself is active OR the
+  // referred user has an active membership (handles sync lag from paystack-verify).
+  const isActive = (r: Referral) =>
+    r.status === "active" ||
+    db.memberships.some((m) => m.userId === r.referredId && m.status === "active");
   const pending = db.submissions
     .filter((s) => s.status === "submitted")
-    .filter((s) => rows.some((r) => r.referredId === s.userId && r.status === "active"));
+    .filter((s) => rows.some((r) => r.referredId === s.userId && isActive(r)));
   const percent = getUserLevel(userId)?.referralCommission ?? read().settings.referralPercentDefault;
   const pendingAmount = pending.reduce((sum, s) => {
     const task = db.tasks.find((t) => t.id === s.taskId);
@@ -1212,21 +1217,33 @@ export function getReferralStats(userId: string) {
   return {
     rows: rows.sort((a, b) => b.createdAt - a.createdAt),
     total: rows.length,
-    active: rows.filter((r) => r.status === "active").length,
+    active: rows.filter(isActive).length,
     earned: rows.reduce((s, r) => s + r.earned, 0),
     pending: pendingAmount,
     percent,
   };
 }
 
-export function getReferralRows(userId: string): (Referral & { name: string; joined: number })[] {
+export function getReferralRows(userId: string): (Referral & { name: string; joined: number; effectiveStatus: "active" | "registered" })[] {
   const db = read();
   return db.referrals
     .filter((r) => r.referrerId === userId)
     .sort((a, b) => b.createdAt - a.createdAt)
     .map((r) => {
       const u = db.profiles.find((p) => p.id === r.referredId);
-      return { ...r, name: u ? maskName(u.fullName) : "Unknown", joined: u?.createdAt || r.createdAt };
+      // Derive "active" from the memberships cache so the UI stays correct
+      // even if the referral row's own status hasn't been synced yet.
+      const hasMembership = db.memberships.some(
+        (m) => m.userId === r.referredId && m.status === "active"
+      );
+      const effectiveStatus: "active" | "registered" =
+        r.status === "active" || hasMembership ? "active" : "registered";
+      return {
+        ...r,
+        effectiveStatus,
+        name: u ? maskName(u.fullName) : "Unknown",
+        joined: u?.createdAt || r.createdAt,
+      };
     });
 }
 
