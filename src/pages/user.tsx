@@ -2,7 +2,8 @@ import { useState } from "react";
 import {
   AlertTriangle, ArrowRight, Briefcase, CheckCircle2, ClipboardList, Clock,
   Coins, CreditCard, Hourglass, Layers, Lock, MailWarning, Play, Receipt,
-  Send, Share2, TrendingUp, Users, Wallet,
+  Send, Share2, TrendingUp, Users, Wallet, Trophy, Disc3, MessageSquare,
+  History, UserPlus,
 } from "lucide-react";
 import { Link } from "../components/nav";
 import {
@@ -14,113 +15,190 @@ import {
   getWalletTx, startTask, submitTaskProof, todaySubmissionCount,
 } from "../lib/services";
 import type { TaskView } from "../lib/services";
-import { navigate, useAction, useData, useUser } from "../lib/store";
+import { navigate, useAction, useData, useSettings, useUser } from "../lib/store";
 
 /* ================= DASHBOARD ================= */
 
 export function Dashboard() {
   const user = useUser()!;
-  const bal = useData(() => getBalances(user.id));
+  const s    = useSettings();
+  const bal  = useData(() => getBalances(user.id));
   const level = useData(() => getUserLevel(user.id));
-  const recentTx = useData(() => getWalletTx(user.id).slice(0, 5));
-  const today = useData(() => todaySubmissionCount(user.id));
+
+  const firstName = user.fullName.split(" ")[0];
+
+  const games = [
+    {
+      to: "/app/feud",
+      label: "Family Feud",
+      desc: "Guess the most popular answers!",
+      bg: "bg-[#1a3a6b]",
+      thumb: (
+        <div className="flex h-full items-center justify-center">
+          <div className="relative flex h-16 w-28 items-center justify-center rounded-xl border-4 border-yellow-400 bg-[#c0392b] shadow-lg">
+            <span className="text-center text-sm font-black uppercase leading-tight text-yellow-300 drop-shadow">
+              Family<br />Feud
+            </span>
+          </div>
+        </div>
+      ),
+    },
+    {
+      to: "/app/spin",
+      label: "Spin Wheel",
+      desc: "Spin & win rewards!",
+      bg: "bg-[#1a4d2e]",
+      thumb: (
+        <div className="flex h-full items-center justify-center">
+          <div className="relative h-16 w-16">
+            {["#e74c3c","#f39c12","#2ecc71","#3498db","#9b59b6","#1abc9c"].map((c, i) => (
+              <div
+                key={i}
+                className="absolute inset-0 rounded-full border-4 border-white/20"
+                style={{
+                  background: `conic-gradient(${c} ${i * 60}deg ${(i + 1) * 60}deg, transparent ${(i + 1) * 60}deg)`,
+                }}
+              />
+            ))}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="h-4 w-4 rounded-full bg-white shadow" />
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      to: "/app/earn",
+      label: "Trivia Quiz",
+      desc: "Test your knowledge!",
+      bg: "bg-[#1a3a6b]",
+      thumb: (
+        <div className="flex h-full items-center justify-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-yellow-400 shadow-lg">
+            <span className="text-3xl">💡</span>
+          </div>
+        </div>
+      ),
+    },
+    {
+      to: "/app/earn",
+      label: "Gold Mine",
+      desc: "Dig and earn coins!",
+      bg: "bg-[#1a4d2e]",
+      thumb: (
+        <div className="flex h-full items-center justify-center">
+          <span className="text-5xl drop-shadow-lg">🪙</span>
+        </div>
+      ),
+    },
+  ];
+
+  const quickActions = [
+    { to: "/app/spin",      icon: <Disc3 className="h-5 w-5 text-amber-600" />,   bg: "bg-amber-100",  label: "Daily Spin",    desc: "Free spins" },
+    { to: "/app/tasks",     icon: <History className="h-5 w-5 text-green-600" />,  bg: "bg-green-100",  label: "Your History",  desc: "View past games" },
+    { to: "/app/referrals", icon: <UserPlus className="h-5 w-5 text-rose-500" />,  bg: "bg-rose-100",   label: "Invite Friends", desc: "Get bonus points" },
+  ];
 
   return (
-    <div>
-      <PageHead
-        title={`Hello, ${user.fullName.split(" ")[0]}`}
-        sub={level ? `${level.name} member · ${today}/${level.taskLimitPerDay} tasks used today` : "Get your account ready to start earning"}
-      />
+    <div className="space-y-5">
 
+      {/* ── Email / membership alerts ── */}
       {!user.emailVerified && (
-        <Card className="mb-5 flex flex-wrap items-center justify-between gap-3 border-amber-200 bg-amber-50 p-4">
-          <div className="flex items-center gap-3">
-            <MailWarning className="h-5 w-5 text-amber-500" />
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <div className="flex items-center gap-2.5">
+            <MailWarning className="h-4 w-4 text-amber-500" />
             <p className="text-sm text-amber-800">Verify your email to unlock tasks and withdrawals.</p>
           </div>
           <Button size="sm" variant="accent" onClick={() => navigate("/verify")}>Verify now</Button>
-        </Card>
+        </div>
       )}
 
-      {!level && (
-        <Card className="mb-5 overflow-hidden">
-          <div className="flex flex-col items-start justify-between gap-4 bg-brand p-5 sm:flex-row sm:items-center">
-            <div>
-              <p className="font-semibold text-white">Activate a membership to start earning</p>
-              <p className="mt-0.5 text-sm text-green-100">
-                Membership unlocks the task catalogue. Levels start from ₦6,500 — tasks are reviewed by humans before rewards land in your wallet.
-              </p>
+      {/* ── Hero banner ── */}
+      <div className="relative overflow-hidden rounded-2xl bg-[#1a4d2e] px-5 py-6 text-white">
+        {/* background leaf decoration */}
+        <div className="pointer-events-none absolute right-4 top-2 select-none text-[80px] opacity-20">🍃</div>
+        <div className="pointer-events-none absolute -right-4 bottom-0 select-none text-[100px] opacity-10">🏆</div>
+
+        <p className="text-sm text-green-200">Welcome back,</p>
+        <h1 className="mt-0.5 text-2xl font-black leading-tight">
+          {firstName} 👋
+        </h1>
+        <p className="mt-1 text-sm text-green-200">Play your favourite games and win amazing rewards!</p>
+
+        {/* Points pill */}
+        <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#f0c040] px-4 py-2">
+          <span className="text-base">🪙</span>
+          <span className="text-sm font-black text-[#7a4f00]">{fmtN(bal.available)}</span>
+        </div>
+      </div>
+
+      {/* ── Featured Games ── */}
+      <div>
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-base font-bold text-slate-900">Featured Games</p>
+          <button onClick={() => navigate("/app/earn")} className="text-sm font-semibold text-green-600 hover:underline">
+            View all →
+          </button>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          {games.map((g) => (
+            <div
+              key={g.label}
+              onClick={() => navigate(g.to)}
+              className="cursor-pointer overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm transition-all active:scale-[0.97]"
+            >
+              {/* thumbnail */}
+              <div className={`${g.bg} h-28`}>{g.thumb}</div>
+              {/* info */}
+              <div className="px-3 pt-2.5 pb-3">
+                <p className="text-sm font-bold text-slate-900">{g.label}</p>
+                <p className="mt-0.5 text-[11px] text-slate-500">{g.desc}</p>
+                <button className="mt-2.5 w-full rounded-full bg-green-600 py-1.5 text-xs font-bold text-white transition-colors hover:bg-green-700">
+                  Play Now
+                </button>
+              </div>
             </div>
-            <Button variant="outline" className="border-white/40 bg-white/10 text-white hover:bg-white hover:text-brand" onClick={() => navigate("/app/membership")}>
-              View levels <ArrowRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </Card>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Quick Actions ── */}
+      <div>
+        <p className="mb-3 text-base font-bold text-slate-900">Quick Actions</p>
+        <div className="grid grid-cols-3 gap-3">
+          {quickActions.map((a) => (
+            <div
+              key={a.label}
+              onClick={() => navigate(a.to)}
+              className="flex cursor-pointer flex-col items-center gap-2 rounded-2xl border border-slate-100 bg-white px-2 py-4 text-center shadow-sm transition-all active:scale-[0.97]"
+            >
+              <span className={`flex h-11 w-11 items-center justify-center rounded-xl ${a.bg}`}>
+                {a.icon}
+              </span>
+              <div>
+                <p className="text-xs font-bold text-slate-800 leading-tight">{a.label}</p>
+                <p className="mt-0.5 text-[10px] text-slate-400">{a.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── No membership nudge ── */}
+      {!level && (
+        <div className="overflow-hidden rounded-2xl bg-green-600 p-5 text-white">
+          <p className="font-bold">Activate a membership</p>
+          <p className="mt-1 text-sm text-green-100">
+            Unlock the task catalogue and start earning real rewards.
+          </p>
+          <button
+            onClick={() => navigate("/app/membership")}
+            className="mt-3 flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-xs font-bold text-green-700"
+          >
+            View levels <ArrowRight className="h-3.5 w-3.5" />
+          </button>
+        </div>
       )}
-
-      <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
-        <Stat label="Available balance" value={fmtN(bal.available)} tone="brand" icon={<Wallet className="h-4.5 w-4.5" />} sub="ready to withdraw" />
-        <Stat label="Total earnings" value={fmtN(bal.totalEarned)} icon={<TrendingUp className="h-4.5 w-4.5" />} />
-        <Stat label="Today's earnings" value={fmtN(bal.todayEarned)} icon={<Coins className="h-4.5 w-4.5" />} />
-        <Stat label="Pending review" value={fmtN(bal.pending)} icon={<Hourglass className="h-4.5 w-4.5" />} sub="submissions under review" />
-        <Stat label="Total withdrawn" value={fmtN(bal.totalWithdrawn)} icon={<ArrowRight className="h-4.5 w-4.5" />} />
-        <Stat label="Membership" value={level ? level.name : "None"} icon={<Layers className="h-4.5 w-4.5" />} sub={level ? `${level.taskLimitPerDay} tasks/day` : "not activated"} />
-        <Stat label="Tasks completed" value={String(bal.tasksCompleted)} icon={<CheckCircle2 className="h-4.5 w-4.5" />} />
-        <Stat label="Referral earnings" value={fmtN(bal.referralEarnings)} icon={<Users className="h-4.5 w-4.5" />} />
-      </div>
-
-      <div className="mt-5 grid gap-4 lg:grid-cols-5">
-        <Card className="lg:col-span-3">
-          <CardHeader
-            title="Recent activity"
-            action={<Link to="/app/transactions" className="text-xs font-semibold text-brand hover:underline">View all</Link>}
-          />
-          {recentTx.length === 0 ? (
-            <EmptyState
-              icon={<Receipt className="h-5 w-5" />}
-              title="No activity yet"
-              sub={level ? "Complete your first task and its approved reward will appear here." : "Activate a membership, then complete tasks to see ledger entries here."}
-              action={<Button size="sm" onClick={() => navigate(level ? "/app/earn" : "/app/membership")}>{level ? "Browse tasks" : "Choose membership"}</Button>}
-            />
-          ) : (
-            <Table head={["Description", "Amount", "Date"]} compact>
-              {recentTx.map((t) => (
-                <tr key={t.id}>
-                  <Td compact className="max-w-[160px]">
-                    <span className="block truncate font-medium text-slate-800">{t.description}</span>
-                    <Badge tone={t.direction === "credit" ? "green" : "slate"}>{t.type.replace("_", " ")}</Badge>
-                  </Td>
-                  <Td compact className={`whitespace-nowrap font-semibold ${t.direction === "credit" ? "text-brand" : "text-slate-700"}`}>
-                    {t.direction === "credit" ? "+" : "−"}{fmtN(t.amount)}
-                  </Td>
-                  <Td compact className="whitespace-nowrap text-xs text-slate-400">{fmtDate(t.createdAt)}</Td>
-                </tr>
-              ))}
-            </Table>
-          )}
-        </Card>
-
-        <Card className="lg:col-span-2">
-          <CardHeader title="Quick actions" />
-          <div className="grid gap-2.5 p-4">
-            {[
-              { to: "/app/earn", icon: Briefcase, label: "Find tasks to earn", desc: "Browse today's catalogue" },
-              { to: "/app/wallet", icon: Wallet, label: "Withdraw to bank", desc: "From the minimum threshold" },
-              { to: "/app/referrals", icon: Share2, label: "Invite & earn commission", desc: "On your referrals' approved work" },
-              { to: "/app/membership", icon: CreditCard, label: "Upgrade membership", desc: "Unlock higher-value tasks" },
-            ].map((a) => (
-              <Link key={a.to} to={a.to} className="flex items-center gap-3.5 rounded-lg border border-slate-200 p-3.5 transition-colors hover:border-brand hover:bg-brand-50/40">
-                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-50 text-brand"><a.icon className="h-4.5 w-4.5" /></span>
-                <span className="flex-1">
-                  <span className="block text-sm font-semibold text-slate-800">{a.label}</span>
-                  <span className="block text-xs text-slate-400">{a.desc}</span>
-                </span>
-                <ArrowRight className="h-4 w-4 text-slate-300" />
-              </Link>
-            ))}
-          </div>
-        </Card>
-      </div>
     </div>
   );
 }

@@ -286,9 +286,9 @@ export function DashShell({ children, admin = false }: { children: ReactNode; ad
         <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-slate-200 bg-white pb-safe lg:hidden" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 0px)" }}>
           {[
             { to: "/app", label: "Home", icon: LayoutDashboard, end: true },
-            { to: "/app/earn", label: "Earn", icon: Briefcase },
+            { to: "/app/feud", label: "Games", icon: Layers },
             { to: "/app/wallet", label: "Wallet", icon: Wallet },
-            { to: "/app/referrals", label: "Refer", icon: Share2 },
+            { to: "/app/tasks", label: "Leaderboard", icon: ListChecks },
             { to: "/app/profile", label: "Account", icon: User },
           ].map((item) => {
             const active = item.end ? path === item.to : path.startsWith(item.to);
