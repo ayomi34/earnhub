@@ -33,64 +33,25 @@ export function Dashboard() {
       to: "/app/feud",
       label: "Family Feud",
       desc: "Guess the most popular answers!",
-      bg: "bg-[#1a3a6b]",
-      thumb: (
-        <div className="flex h-full items-center justify-center">
-          <div className="relative flex h-16 w-28 items-center justify-center rounded-xl border-4 border-yellow-400 bg-[#c0392b] shadow-lg">
-            <span className="text-center text-sm font-black uppercase leading-tight text-yellow-300 drop-shadow">
-              Family<br />Feud
-            </span>
-          </div>
-        </div>
-      ),
+      img: "/images/game-familyfeud.jpg",
     },
     {
       to: "/app/spin",
       label: "Spin Wheel",
       desc: "Spin & win rewards!",
-      bg: "bg-[#1a4d2e]",
-      thumb: (
-        <div className="flex h-full items-center justify-center">
-          <div className="relative h-16 w-16">
-            {["#e74c3c","#f39c12","#2ecc71","#3498db","#9b59b6","#1abc9c"].map((c, i) => (
-              <div
-                key={i}
-                className="absolute inset-0 rounded-full border-4 border-white/20"
-                style={{
-                  background: `conic-gradient(${c} ${i * 60}deg ${(i + 1) * 60}deg, transparent ${(i + 1) * 60}deg)`,
-                }}
-              />
-            ))}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="h-4 w-4 rounded-full bg-white shadow" />
-            </div>
-          </div>
-        </div>
-      ),
+      img: "/images/game-spinwheel.jpg",
     },
     {
       to: "/app/earn",
       label: "Trivia Quiz",
       desc: "Test your knowledge!",
-      bg: "bg-[#1a3a6b]",
-      thumb: (
-        <div className="flex h-full items-center justify-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-yellow-400 shadow-lg">
-            <span className="text-3xl">💡</span>
-          </div>
-        </div>
-      ),
+      img: null,
     },
     {
       to: "/app/earn",
       label: "Gold Mine",
       desc: "Dig and earn coins!",
-      bg: "bg-[#1a4d2e]",
-      thumb: (
-        <div className="flex h-full items-center justify-center">
-          <span className="text-5xl drop-shadow-lg">🪙</span>
-        </div>
-      ),
+      img: "/images/game-goldmine.png",
     },
   ];
 
@@ -149,7 +110,12 @@ export function Dashboard() {
               className="cursor-pointer overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm transition-all active:scale-[0.97]"
             >
               {/* thumbnail */}
-              <div className={`${g.bg} h-28`}>{g.thumb}</div>
+              <div className="h-28 overflow-hidden bg-slate-100">
+                {g.img
+                  ? <img src={g.img} alt={g.label} className="h-full w-full object-cover" />
+                  : <div className="flex h-full items-center justify-center bg-[#1a3a6b]"><span className="text-4xl">💡</span></div>
+                }
+              </div>
               {/* info */}
               <div className="px-3 pt-2.5 pb-3">
                 <p className="text-sm font-bold text-slate-900">{g.label}</p>
