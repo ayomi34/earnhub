@@ -407,38 +407,9 @@ export { getLevel as _levelRef };
 
 /* ================= GAMES PAGE ================= */
 
-// SVG thumbnails for each game
-function FamilyFeudThumb() {
-  return (
-    <svg viewBox="0 0 80 80" className="h-full w-full" xmlns="http://www.w3.org/2000/svg">
-      <rect width="80" height="80" fill="#1a2e6b" />
-      <rect x="8" y="8" width="64" height="64" rx="8" fill="#c0392b" />
-      <rect x="14" y="14" width="52" height="52" rx="6" fill="none" stroke="#f1c40f" strokeWidth="3" />
-      <text x="40" y="36" textAnchor="middle" fill="#f1c40f" fontSize="9" fontWeight="bold" fontFamily="sans-serif">FAMILY</text>
-      <text x="40" y="50" textAnchor="middle" fill="#f1c40f" fontSize="9" fontWeight="bold" fontFamily="sans-serif">FEUD</text>
-      <circle cx="40" cy="58" r="4" fill="#f1c40f" opacity="0.7" />
-    </svg>
-  );
-}
-
-function SpinWheelThumb() {
-  const colors = ["#e74c3c","#f39c12","#2ecc71","#3498db","#9b59b6","#1abc9c","#e67e22","#e84393"];
-  return (
-    <svg viewBox="0 0 80 80" className="h-full w-full" xmlns="http://www.w3.org/2000/svg">
-      <rect width="80" height="80" fill="#0d3b2e" />
-      {colors.map((c, i) => {
-        const angle = (360 / colors.length);
-        const startA = (i * angle - 90) * (Math.PI / 180);
-        const endA   = ((i + 1) * angle - 90) * (Math.PI / 180);
-        const cx = 40, cy = 40, r = 30;
-        const x1 = cx + r * Math.cos(startA), y1 = cy + r * Math.sin(startA);
-        const x2 = cx + r * Math.cos(endA),   y2 = cy + r * Math.sin(endA);
-        return <path key={i} d={`M${cx},${cy} L${x1},${y1} A${r},${r} 0 0,1 ${x2},${y2} Z`} fill={c} stroke="#fff" strokeWidth="0.5" />;
-      })}
-      <circle cx="40" cy="40" r="6" fill="white" />
-      <circle cx="40" cy="40" r="3" fill="#333" />
-    </svg>
-  );
+// Game thumbnail component — renders a photo where available, SVG fallback otherwise
+function GameThumb({ src, alt }: { src: string; alt: string }) {
+  return <img src={src} alt={alt} className="h-full w-full object-cover" />;
 }
 
 function TriviaThumb() {
@@ -453,51 +424,20 @@ function TriviaThumb() {
   );
 }
 
-function GoldMineThumb() {
-  return (
-    <svg viewBox="0 0 80 80" className="h-full w-full" xmlns="http://www.w3.org/2000/svg">
-      <rect width="80" height="80" fill="#1a4d2e" />
-      <circle cx="30" cy="48" r="14" fill="#f1c40f" />
-      <circle cx="30" cy="48" r="10" fill="#e6a800" />
-      <text x="30" y="53" textAnchor="middle" fill="#7a4f00" fontSize="12" fontWeight="bold" fontFamily="sans-serif">₦</text>
-      <circle cx="50" cy="38" r="10" fill="#f1c40f" />
-      <circle cx="50" cy="38" r="7" fill="#e6a800" />
-      <text x="50" y="42" textAnchor="middle" fill="#7a4f00" fontSize="9" fontWeight="bold" fontFamily="sans-serif">₦</text>
-      <circle cx="58" cy="54" r="8" fill="#f1c40f" />
-      <circle cx="58" cy="54" r="5" fill="#e6a800" />
-    </svg>
-  );
-}
-
-function FamilyChallengeThumb() {
-  return (
-    <svg viewBox="0 0 80 80" className="h-full w-full" xmlns="http://www.w3.org/2000/svg">
-      <rect width="80" height="80" fill="#1a4d2e" />
-      {/* 3 people silhouettes */}
-      <circle cx="40" cy="28" r="9" fill="#f1c40f" />
-      <path d="M24 58 Q40 44 56 58" fill="#f1c40f" />
-      <circle cx="22" cy="35" r="7" fill="#a0d080" />
-      <path d="M8 62 Q22 50 36 62" fill="#a0d080" />
-      <circle cx="58" cy="35" r="7" fill="#a0d080" />
-      <path d="M44 62 Q58 50 72 62" fill="#a0d080" />
-    </svg>
-  );
-}
-
 const GAME_LIST = [
   {
     to: "/app/feud",
     label: "Family Feud",
     desc: "Guess the most popular answers!",
     tags: [{ text: "Popular", color: "text-rose-600 bg-rose-50 border border-rose-200" }, { text: "Multiplayer", color: "text-slate-600 bg-slate-100" }],
-    thumb: <FamilyFeudThumb />,
+    thumb: <GameThumb src="/images/game-familyfeud.jpg" alt="Family Feud" />,
   },
   {
     to: "/app/spin",
     label: "Spin Wheel",
     desc: "Spin & win exciting rewards!",
     tags: [{ text: "Luck", color: "text-purple-600 bg-purple-50 border border-purple-200" }, { text: "Instant Win", color: "text-slate-600 bg-slate-100" }],
-    thumb: <SpinWheelThumb />,
+    thumb: <GameThumb src="/images/game-spinwheel.jpg" alt="Spin Wheel" />,
   },
   {
     to: "/app/earn",
@@ -511,14 +451,14 @@ const GAME_LIST = [
     label: "Gold Mine",
     desc: "Dig and earn coins!",
     tags: [{ text: "Strategy", color: "text-green-600 bg-green-50 border border-green-200" }, { text: "Earn", color: "text-slate-600 bg-slate-100" }],
-    thumb: <GoldMineThumb />,
+    thumb: <GameThumb src="/images/game-goldmine.png" alt="Gold Mine" />,
   },
   {
     to: "/app/feud",
     label: "Family Challenge",
     desc: "Team up and win big!",
     tags: [{ text: "Multiplayer", color: "text-rose-600 bg-rose-50 border border-rose-200" }, { text: "Rewards", color: "text-purple-600 bg-purple-50 border border-purple-200" }],
-    thumb: <FamilyChallengeThumb />,
+    thumb: <GameThumb src="/images/game-familyfeud.jpg" alt="Family Challenge" />,
   },
 ];
 
