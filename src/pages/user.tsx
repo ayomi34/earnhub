@@ -121,7 +121,7 @@ export function Dashboard() {
         <div className="pointer-events-none absolute -right-4 bottom-0 select-none text-[100px] opacity-10">🏆</div>
 
         <p className="text-sm text-green-200">Welcome back,</p>
-        <h1 className="mt-0.5 text-2xl font-black leading-tight">
+        <h1 className="mt-0.5 text-[20px] font-black leading-tight">
           {firstName} 👋
         </h1>
         <p className="mt-1 text-sm text-green-200">Play your favourite games and win amazing rewards!</p>

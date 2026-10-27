@@ -226,7 +226,7 @@ function UserDetail({ u, adminId, busy, run, onChanged }: {
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-lg font-bold text-slate-900">{fresh.fullName}</p>
+          <p className="text-sm font-bold text-slate-900">{fresh.fullName}</p>
           <p className="text-sm text-slate-500">{fresh.email} · {fresh.phone}</p>
           <p className="mt-1 font-mono text-[11px] text-slate-400">ID {fresh.id.slice(0, 8)} · Ref code {fresh.referralCode} · Joined {fmtDate(fresh.createdAt)}</p>
         </div>

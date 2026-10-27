@@ -92,7 +92,7 @@ export default function PaystackCheckout({ payment, level, email, onDone, onClos
       <div className="mb-4 flex items-center justify-between rounded-lg bg-slate-50 px-4 py-3">
         <div>
           <p className="text-xs text-slate-500">{level.name} Membership</p>
-          <p className="text-lg font-bold text-slate-900">{fmtN(payment.amount)}</p>
+          <p className="text-sm font-bold text-slate-900">{fmtN(payment.amount)}</p>
         </div>
         <span className="rounded-full bg-green-100 px-3 py-1 text-[11px] font-semibold text-green-800">LIVE PAYSTACK</span>
       </div>

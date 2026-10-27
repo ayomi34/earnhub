@@ -106,7 +106,7 @@ function WithdrawModal({ open, onClose }: { open: boolean; onClose: () => void }
     <Modal open={open} onClose={onClose} title="Request withdrawal" wide>
       <div className="mb-4 flex items-center justify-between rounded-lg bg-brand-50 px-4 py-3">
         <span className="text-sm text-green-900">Available balance</span>
-        <span className="text-lg font-bold text-green-900">{fmtN(bal.available)}</span>
+        <span className="text-sm font-bold text-green-900">{fmtN(bal.available)}</span>
       </div>
 
       {/* Referral gate progress */}
@@ -262,7 +262,7 @@ export function Referrals() {
         <div className="mt-2.5 flex flex-col gap-2.5 sm:flex-row sm:items-center">
           <div className="flex flex-1 items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
             <Share2 className="h-4 w-4 shrink-0 text-slate-400" />
-            <span className="font-mono text-lg font-bold tracking-widest text-slate-800">{code}</span>
+            <span className="font-mono text-sm font-bold tracking-widest text-slate-800">{code}</span>
           </div>
           <CopyButton text={code} label="Copy code" />
         </div>
@@ -337,7 +337,7 @@ export function MembershipPage() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-xs uppercase tracking-wide text-green-100">Active membership</p>
-                <p className="mt-1 text-2xl font-bold">{level.name}</p>
+                <p className="mt-1 text-[17px] font-bold">{level.name}</p>
               </div>
               <Badge tone="green"><Check className="h-3 w-3" /> Activated</Badge>
             </div>
@@ -382,7 +382,7 @@ export function MembershipPage() {
                 <h4 className="font-semibold text-slate-900">{l.name}</h4>
                 {current && <Badge tone="green">Current</Badge>}
               </div>
-              <p className="mt-2 text-xl font-bold text-slate-900">{fmtN(l.price)}</p>
+              <p className="mt-2 text-[17px] font-bold text-slate-900">{fmtN(l.price)}</p>
               <p className="mt-1 text-xs text-slate-500">{l.taskLimitPerDay} tasks/day · {l.referralCommission}% commission</p>
               <ul className="mt-3 flex-1 space-y-1.5">
                 {l.features.slice(0, 3).map((f) => (

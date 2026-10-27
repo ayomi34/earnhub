@@ -48,7 +48,7 @@ function TimerRing({ timeLeft, total }: { timeLeft: number; total: number }) {
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-xl font-black tabular-nums leading-none" style={{ color: stroke }}>
+        <span className="text-base font-black tabular-nums leading-none" style={{ color: stroke }}>
           {timeLeft}
         </span>
         <span className="text-[9px] font-semibold uppercase tracking-widest text-green-600">sec</span>
@@ -194,14 +194,14 @@ export function FeudGamePage() {
         <div className="rounded-2xl bg-green-50 border border-green-200 px-5 py-5">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-black text-slate-900">Survey Feud</h1>
-              <p className="mt-1 text-sm text-slate-600">
+              <h1 className="text-xl font-black text-slate-900">Survey Feud</h1>
+              <p className="mt-1 text-[13px] text-slate-600">
                 Guess what most people answered — win real cash
               </p>
             </div>
             <div className="text-right shrink-0">
-              <p className="text-xs text-slate-500">Today</p>
-              <p className="text-lg font-black text-slate-800">
+              <p className="text-[11px] text-slate-500">Today</p>
+              <p className="text-sm font-black text-slate-800">
                 {todayCount}/{cfg.dailyLimit > 0 ? cfg.dailyLimit : "∞"}
               </p>
             </div>
@@ -236,7 +236,7 @@ export function FeudGamePage() {
             { label: "Time limit", value: `${cfg.timeLimitSeconds}s` },
           ].map((s) => (
             <div key={s.label} className="rounded-xl bg-green-50 border border-green-200 px-3 py-3.5 text-center">
-              <p className="text-base font-black text-green-700">{s.value}</p>
+              <p className="text-sm font-black text-green-700">{s.value}</p>
               <p className="mt-0.5 text-[11px] text-slate-500">{s.label}</p>
             </div>
           ))}
@@ -420,7 +420,7 @@ export function FeudGamePage() {
             {won ? <Trophy className="h-8 w-8" /> : <Sparkles className="h-8 w-8" />}
           </div>
 
-          <h2 className="mt-4 text-xl font-black text-slate-900">
+          <h2 className="mt-4 text-[17px] font-black text-slate-900">
             {won ? "You won!" : "Game over"}
           </h2>
           <p className="mt-1 text-sm text-slate-500">
@@ -439,9 +439,9 @@ export function FeudGamePage() {
                 style={{ width: `${pct}%` }}
               />
             </div>
-            <p className="mt-4 text-4xl font-black text-slate-900">
+            <p className="mt-4 text-2xl font-black text-slate-900">
               {gameResult.score}
-              <span className="ml-1 text-base font-medium text-slate-400">pts</span>
+              <span className="ml-1 text-sm font-medium text-slate-400">pts</span>
             </p>
             <p className="text-xs text-slate-400">{gameResult.timeSpent}s</p>
           </div>
@@ -449,7 +449,7 @@ export function FeudGamePage() {
           {won && (
             <div className="mx-auto mt-5 inline-flex items-center gap-2 rounded-full border border-green-200 bg-green-50 px-5 py-2.5">
               <Award className="h-4 w-4 text-green-600" />
-              <span className="text-lg font-black text-green-700">{fmtN(gameResult.reward)}</span>
+              <span className="text-sm font-black text-green-700">{fmtN(gameResult.reward)}</span>
               <span className="text-sm text-slate-400">earned</span>
             </div>
           )}
@@ -463,7 +463,7 @@ export function FeudGamePage() {
             { label: "Time",   value: `${gameResult.timeSpent}s` },
           ].map((item) => (
             <div key={item.label} className="rounded-xl bg-green-50 border border-green-200 px-3 py-3.5 text-center">
-              <p className="text-base font-black text-slate-800">{item.value}</p>
+              <p className="text-sm font-black text-slate-800">{item.value}</p>
               <p className="mt-0.5 text-[11px] text-slate-500">{item.label}</p>
             </div>
           ))}

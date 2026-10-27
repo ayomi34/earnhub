@@ -142,11 +142,11 @@ export function SpinPage() {
           <div className="grid grid-cols-2 gap-3">
             <Card className="p-4">
               <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Today's Reward</p>
-              <p className="mt-1 text-lg font-bold text-slate-900">{todayReward > 0 ? fmtN(todayReward) : "—"}</p>
+              <p className="mt-1 text-sm font-bold text-slate-900">{todayReward > 0 ? fmtN(todayReward) : "—"}</p>
             </Card>
             <Card className="p-4">
               <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">Total Wins</p>
-              <p className="mt-1 text-lg font-bold text-slate-900">
+              <p className="mt-1 text-sm font-bold text-slate-900">
                 {displayedSpins.filter((s) => s.rewardType !== "none").length}
               </p>
             </Card>

@@ -20,7 +20,7 @@ function AuthShell({ children, title, sub }: { children: React.ReactNode; title:
       </header>
       <div className="flex flex-1 items-center justify-center px-4 py-10">
         <div className="w-full max-w-md">
-          <h1 className="text-center text-2xl font-bold tracking-tight text-slate-900">{title}</h1>
+          <h1 className="text-center text-xl font-bold tracking-tight text-slate-900">{title}</h1>
           {sub && <p className="mt-2 text-center text-sm text-slate-500">{sub}</p>}
           <div className="mt-7">{children}</div>
         </div>

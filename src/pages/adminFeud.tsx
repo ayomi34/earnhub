@@ -118,22 +118,22 @@ export function AdminFeud() {
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         <Card className="p-4 md:p-5">
           <p className="text-xs font-medium text-slate-500">Active questions</p>
-          <p className="mt-1.5 text-lg font-bold text-slate-900">{activeQuestions}</p>
+          <p className="mt-1.5 text-sm font-bold text-slate-900">{activeQuestions}</p>
           <p className="mt-0.5 text-[11px] text-slate-400">{totalQuestionCount.toLocaleString()} total in bank</p>
         </Card>
         <Card className="p-4 md:p-5">
           <p className="text-xs font-medium text-slate-500">Games played</p>
-          <p className="mt-1.5 text-lg font-bold text-slate-900">{completedSessions.length}</p>
+          <p className="mt-1.5 text-sm font-bold text-slate-900">{completedSessions.length}</p>
           <p className="mt-0.5 text-[11px] text-slate-400">{playersToday} players today</p>
         </Card>
         <Card className="p-4 md:p-5">
           <p className="text-xs font-medium text-slate-500">Rewards paid (total)</p>
-          <p className="mt-1.5 text-lg font-bold text-slate-900">{fmtN(totalRewards)}</p>
+          <p className="mt-1.5 text-sm font-bold text-slate-900">{fmtN(totalRewards)}</p>
           <p className="mt-0.5 text-[11px] text-slate-400">{fmtN(rewardsToday)} today</p>
         </Card>
         <Card className="p-4 md:p-5">
           <p className="text-xs font-medium text-slate-500">Game status</p>
-          <p className="mt-1.5 text-lg font-bold text-slate-900">
+          <p className="mt-1.5 text-sm font-bold text-slate-900">
             <Badge tone={draft.enabled ? "green" : "red"}>{draft.enabled ? "Live" : "Paused"}</Badge>
           </p>
           <p className="mt-0.5 text-[11px] text-slate-400">{draft.dailyLimit}/user/day · {draft.timeLimitSeconds}s timer</p>

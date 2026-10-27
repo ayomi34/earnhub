@@ -89,8 +89,8 @@ export function PageHead({ title, sub, action }: { title: string; sub?: string; 
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 className="text-xl font-bold text-slate-900 md:text-2xl">{title}</h1>
-        {sub && <p className="mt-1 text-sm text-slate-500">{sub}</p>}
+        <h1 className="text-[18px] font-bold leading-snug text-slate-900 md:text-xl">{title}</h1>
+        {sub && <p className="mt-1 text-[13px] text-slate-500">{sub}</p>}
       </div>
       {action}
     </div>
@@ -227,7 +227,7 @@ export function Stat({ label, value, icon, tone = "default", sub }: {
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="truncate text-xs font-medium text-slate-500">{label}</p>
-          <p className={`mt-1.5 truncate text-lg font-bold tracking-tight md:text-[22px] ${tone === "brand" ? "text-brand" : "text-slate-900"}`}>
+          <p className={`mt-1 truncate text-base font-bold tracking-tight md:text-lg ${tone === "brand" ? "text-brand" : "text-slate-900"}`}>
             {value}
           </p>
           {sub && <p className="mt-0.5 truncate text-[11px] text-slate-400">{sub}</p>}

@@ -142,7 +142,7 @@ export default function App() {
         <ToastProvider>
           <DashShell>
             <div className="flex flex-col items-center py-24 text-center">
-              <p className="text-lg font-bold text-slate-900">Administrator access required</p>
+              <p className="text-sm font-bold text-slate-900">Administrator access required</p>
               <p className="mt-2 max-w-sm text-sm text-slate-500">
                 This area is protected by role-based access control. Your account does not have admin privileges.
               </p>
@@ -165,7 +165,7 @@ export default function App() {
       <PublicLayout>
         <div className="flex flex-col items-center px-4 py-28 text-center">
           <p className="font-mono text-sm font-semibold text-brand">404</p>
-          <h1 className="mt-2 text-2xl font-bold text-slate-900">Page not found</h1>
+          <h1 className="mt-2 text-xl font-bold text-slate-900">Page not found</h1>
           <p className="mt-2 text-sm text-slate-500">The page you're looking for doesn't exist.</p>
           <Button className="mt-6" onClick={() => navigate("/")}>Go home</Button>
         </div>
