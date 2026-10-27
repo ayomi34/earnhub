@@ -278,12 +278,12 @@ export function DashShell({ children, admin = false }: { children: ReactNode; ad
           </div>
         </header>
 
-        <main className="mx-auto max-w-6xl px-4 py-6 pb-28 md:px-8 md:py-8 lg:pb-10">{children}</main>
+        <main className="mx-auto max-w-6xl px-4 py-6 pb-28 md:px-8 md:py-8 md:pb-10">{children}</main>
       </div>
 
       {/* mobile bottom nav */}
       {!admin && (
-        <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-slate-200 bg-white pb-safe lg:hidden" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 0px)" }}>
+        <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-slate-200 bg-white pb-safe md:hidden" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 0px)" }}>
           {[
             { to: "/app", label: "Home", icon: LayoutDashboard, end: true },
             { to: "/app/games", label: "Games", icon: Layers },

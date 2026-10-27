@@ -52,6 +52,7 @@ export function Dashboard() {
       label: "Gold Mine",
       desc: "Dig and earn coins!",
       img: "/images/game-goldmine.png",
+      imgPos: "object-top",
     },
   ];
 
@@ -109,10 +110,10 @@ export function Dashboard() {
               onClick={() => navigate(g.to)}
               className="cursor-pointer overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm transition-all active:scale-[0.97]"
             >
-              {/* thumbnail */}
-              <div className="h-28 overflow-hidden bg-slate-100">
+              {/* thumbnail — square aspect ratio */}
+              <div className="aspect-square overflow-hidden bg-slate-100">
                 {g.img
-                  ? <img src={g.img} alt={g.label} className="h-full w-full object-cover" />
+                  ? <img src={g.img} alt={g.label} className={`h-full w-full object-cover ${(g as any).imgPos ?? "object-center"}`} />
                   : <div className="flex h-full items-center justify-center bg-[#1a3a6b]"><span className="text-4xl">💡</span></div>
                 }
               </div>
@@ -374,8 +375,8 @@ export { getLevel as _levelRef };
 /* ================= GAMES PAGE ================= */
 
 // Game thumbnail component — renders a photo where available, SVG fallback otherwise
-function GameThumb({ src, alt }: { src: string; alt: string }) {
-  return <img src={src} alt={alt} className="h-full w-full object-cover" />;
+function GameThumb({ src, alt, className = "" }: { src: string; alt: string; className?: string }) {
+  return <img src={src} alt={alt} className={`h-full w-full object-cover ${className}`} />;
 }
 
 function TriviaThumb() {
@@ -417,7 +418,7 @@ const GAME_LIST = [
     label: "Gold Mine",
     desc: "Dig and earn coins!",
     tags: [{ text: "Strategy", color: "text-green-600 bg-green-50 border border-green-200" }, { text: "Earn", color: "text-slate-600 bg-slate-100" }],
-    thumb: <GameThumb src="/images/game-goldmine.png" alt="Gold Mine" />,
+    thumb: <GameThumb src="/images/game-goldmine.png" alt="Gold Mine" className="object-top" />,
   },
   {
     to: "/app/feud",
