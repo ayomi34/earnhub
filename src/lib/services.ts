@@ -4,6 +4,7 @@ import type {
   Balances, MembershipLevel, Notification, Payment, Profile, Settings,
   SupportTicket, Task, TaskSubmission, Withdrawal, WalletTx,
   Referral, AuditLog, Membership, SpinConfig, SpinReward, SpinRewardType, SpinWinner,
+  GoldMineCycle, GoldMineConversion,
 } from "./types";
 
 /* EarnHub service layer — Supabase is the single source of truth.
@@ -1495,6 +1496,183 @@ export async function adminSaveSettings(adminId: string, s: Settings) {
     throw new SvcError("Referral commission must be between 0% and 30%.");
   await invokeAdmin("save-settings", { settings: { ...s, minWithdrawal: Math.floor(s.minWithdrawal) } });
   await hydrateAll();
+}
+
+/* ================= GOLD MINE ================= */
+
+function mapGoldMineCycle(row: any): GoldMineCycle {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    levelId: row.level_id,
+    goldReward: Number(row.gold_reward),
+    joinCost: Number(row.join_cost ?? 0),
+    status: row.status,
+    startedAt: new Date(row.started_at).getTime(),
+    endsAt: new Date(row.ends_at).getTime(),
+    completedAt: row.completed_at ? new Date(row.completed_at).getTime() : null,
+    goldCredited: Boolean(row.gold_credited),
+  };
+}
+
+function mapGoldMineConversion(row: any): GoldMineConversion {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    goldAmount: Number(row.gold_amount),
+    cashAmount: Number(row.cash_amount),
+    feeAmount: Number(row.fee_amount ?? 0),
+    status: row.status,
+    reference: row.reference,
+    note: row.note ?? null,
+    createdAt: new Date(row.created_at).getTime(),
+    processedAt: row.processed_at ? new Date(row.processed_at).getTime() : null,
+  };
+}
+
+/** Hydrate the current user's gold mine data from Supabase. */
+export async function hydrateGoldMine(userId: string) {
+  const [{ data: cycles }, { data: conversions }] = await Promise.all([
+    supabase.from("gold_mine_cycles").select("*").eq("user_id", userId).order("created_at", { ascending: false }),
+    supabase.from("gold_mine_conversions").select("*").eq("user_id", userId).order("created_at", { ascending: false }),
+  ]);
+  update((db) => {
+    db.goldMineCycles = (cycles ?? []).map(mapGoldMineCycle);
+    db.goldMineConversions = (conversions ?? []).map(mapGoldMineConversion);
+  });
+}
+
+/** Compute current gold balance from in-memory cache. */
+export function getGoldBalance(userId: string): number {
+  const db = read();
+  const earned = db.goldMineCycles
+    .filter((c) => c.userId === userId && c.goldCredited)
+    .reduce((s, c) => s + c.goldReward, 0);
+  const spent = db.goldMineConversions
+    .filter((c) => c.userId === userId && c.status !== "rejected")
+    .reduce((s, c) => s + c.goldAmount, 0);
+  return Math.max(0, earned - spent);
+}
+
+/** Join a new gold mine cycle (calls edge function). */
+export async function joinGoldMineCycle(userId: string): Promise<GoldMineCycle> {
+  const { data, error } = await supabase.functions.invoke("gold-mine", {
+    body: { action: "join-cycle" },
+  });
+  if (error) {
+    const ctx: any = (error as any)?.context;
+    let serverMsg = "";
+    try {
+      const ctxJson = ctx && typeof ctx.json === "function" ? await ctx.json().catch(() => null) : ctx;
+      serverMsg = (ctxJson as any)?.error || "";
+    } catch { /* ignore */ }
+    throw new SvcError(serverMsg || (error as any)?.message || "Failed to join cycle.");
+  }
+  if (!data?.cycle) throw new SvcError("Failed to join cycle — please try again.");
+  const cycle = mapGoldMineCycle(data.cycle);
+  update((db) => {
+    db.goldMineCycles = [cycle, ...db.goldMineCycles.filter((c) => c.id !== cycle.id)];
+  });
+  return cycle;
+}
+
+/** Process matured cycles for the current user. Call on Gold Mine page load. */
+export async function completeMatureCycles(userId: string): Promise<GoldMineCycle[]> {
+  const { data, error } = await supabase.functions.invoke("gold-mine", {
+    body: { action: "complete-cycles" },
+  });
+  if (error) return []; // best-effort
+  const completed: GoldMineCycle[] = (data?.completed ?? []).map(mapGoldMineCycle);
+  if (completed.length > 0) {
+    await hydrateGoldMine(userId);
+  }
+  return completed;
+}
+
+/** Request a gold-to-cash conversion. */
+export async function requestGoldConversion(userId: string, goldAmount: number): Promise<GoldMineConversion> {
+  const { data, error } = await supabase.functions.invoke("gold-mine", {
+    body: { action: "request-conversion", goldAmount },
+  });
+  if (error) {
+    const ctx: any = (error as any)?.context;
+    let serverMsg = "";
+    try {
+      const ctxJson = ctx && typeof ctx.json === "function" ? await ctx.json().catch(() => null) : ctx;
+      serverMsg = (ctxJson as any)?.error || "";
+    } catch { /* ignore */ }
+    throw new SvcError(serverMsg || (error as any)?.message || "Conversion request failed.");
+  }
+  if (!data?.conversion) throw new SvcError("Conversion request failed — please try again.");
+  const conv = mapGoldMineConversion(data.conversion);
+  update((db) => {
+    db.goldMineConversions = [conv, ...db.goldMineConversions.filter((c) => c.id !== conv.id)];
+  });
+  return conv;
+}
+
+/** Admin: get all gold mine cycles across all users. */
+export async function adminGetAllGoldMineCycles(adminId: string): Promise<GoldMineCycle[]> {
+  requireAdmin(adminId);
+  const { data } = await supabase.from("gold_mine_cycles").select("*").order("created_at", { ascending: false });
+  return (data ?? []).map(mapGoldMineCycle);
+}
+
+/** Admin: get all conversion requests. */
+export async function adminGetAllConversions(adminId: string): Promise<GoldMineConversion[]> {
+  requireAdmin(adminId);
+  const { data } = await supabase.from("gold_mine_conversions").select("*").order("created_at", { ascending: false });
+  return (data ?? []).map(mapGoldMineConversion);
+}
+
+/** Admin: approve a conversion — credits user's wallet. */
+export async function adminApproveConversion(adminId: string, conversionId: string): Promise<void> {
+  requireAdmin(adminId);
+  // Fetch conversion details
+  const { data: row } = await supabase.from("gold_mine_conversions").select("*").eq("id", conversionId).maybeSingle();
+  if (!row) throw new SvcError("Conversion not found.");
+  if (row.status !== "pending") throw new SvcError("Only pending conversions can be approved.");
+
+  const txId = uid();
+  const { error: txErr } = await supabase.from("wallet_transactions").insert({
+    id: txId, user_id: row.user_id, type: "gold_mine_conversion",
+    direction: "credit", amount: row.cash_amount, status: "approved",
+    description: `Gold Mine conversion — ${row.gold_amount} gold coins`,
+    reference: row.reference, source_id: conversionId,
+  });
+  if (txErr) throw new SvcError(`Failed to credit wallet: ${txErr.message}`);
+
+  const { error: updErr } = await supabase.from("gold_mine_conversions")
+    .update({ status: "approved", processed_at: new Date().toISOString() })
+    .eq("id", conversionId);
+  if (updErr) throw new SvcError(`Failed to update conversion: ${updErr.message}`);
+
+  await supabase.from("notifications").insert({
+    id: uid(), user_id: row.user_id, type: "system",
+    title: "Gold conversion approved",
+    body: `Your conversion of ${row.gold_amount} gold coins to ₦${row.cash_amount.toLocaleString()} has been approved and credited to your wallet.`,
+    read: false,
+  });
+}
+
+/** Admin: reject a conversion — gold is returned. */
+export async function adminRejectConversion(adminId: string, conversionId: string, note: string): Promise<void> {
+  requireAdmin(adminId);
+  const { data: row } = await supabase.from("gold_mine_conversions").select("*").eq("id", conversionId).maybeSingle();
+  if (!row) throw new SvcError("Conversion not found.");
+  if (row.status !== "pending") throw new SvcError("Only pending conversions can be rejected.");
+
+  const { error } = await supabase.from("gold_mine_conversions")
+    .update({ status: "rejected", note, processed_at: new Date().toISOString() })
+    .eq("id", conversionId);
+  if (error) throw new SvcError(`Failed to reject conversion: ${error.message}`);
+
+  await supabase.from("notifications").insert({
+    id: uid(), user_id: row.user_id, type: "system",
+    title: "Gold conversion rejected",
+    body: `Your conversion request for ${row.gold_amount} gold coins was not approved. ${note ? `Reason: ${note}` : "Contact support for more information."} Your gold coins have been returned.`,
+    read: false,
+  });
 }
 
 export { getLevel as levelById };

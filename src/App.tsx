@@ -18,6 +18,8 @@ import {
 } from "./pages/adminFin";
 import { AdminSpin } from "./pages/adminSpin";
 import { AdminFeud } from "./pages/adminFeud";
+import { AdminGoldMine } from "./pages/adminGoldMine";
+import { GoldMinePage } from "./pages/goldmine";
 import { Button } from "./components/ui";
 
 function useScrollTop(path: string) {
@@ -101,6 +103,7 @@ export default function App() {
     "/app": <Dashboard />,
     "/app/spin": <SpinPage />,
     "/app/feud": <FeudGamePage />,
+    "/app/goldmine": <GoldMinePage />,
     "/app/earn": <Earn />,
     "/app/tasks": <MyTasks />,
     "/app/games": <GamesPage />,
@@ -134,6 +137,7 @@ export default function App() {
     "/admin/settings": <AdminSettings />,
     "/admin/spin": <AdminSpin />,
     "/admin/feud": <AdminFeud />,
+    "/admin/goldmine": <AdminGoldMine />,
     "/admin/audit": <AdminAudit />,
   };
   if (p in adminPages) {

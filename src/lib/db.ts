@@ -1,4 +1,4 @@
-import type { DB, SpinConfig, FeudConfig, FeudQuestion } from "./types";
+import type { DB, SpinConfig, FeudConfig, FeudQuestion, GoldMineConfig } from "./types";
 
 /* EarnHub client cache.
  * All data lives in Supabase — this store is an in-memory cache hydrated
@@ -39,6 +39,15 @@ export const DEFAULT_FEUD_CONFIG: FeudConfig = {
   maxWinners: 0,
   startDate: null,
   endDate: null,
+};
+
+export const DEFAULT_GOLD_MINE_CONFIG: GoldMineConfig = {
+  enabled: true,
+  goldToCashRate: 10,         // ₦10 per gold coin
+  minConversionGold: 50,      // minimum 50 gold coins to convert
+  conversionFeePercent: 5,    // 5% fee on cash payout
+  maxDailyConversions: 1,     // 1 conversion per day
+  levelConfigs: [],           // populated by admin per level
 };
 
 export const DEFAULT_FEUD_QUESTIONS: FeudQuestion[] = [
@@ -184,7 +193,10 @@ function emptyDB(): DB {
       paymentMode: "live",
       spin: DEFAULT_SPIN_CONFIG,
       feud: DEFAULT_FEUD_CONFIG,
+      goldMine: DEFAULT_GOLD_MINE_CONFIG,
     },
+    goldMineCycles: [],
+    goldMineConversions: [],
     session: null,
   };
 }

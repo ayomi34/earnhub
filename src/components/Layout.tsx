@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import {
   Bell, Briefcase, ClipboardList, CreditCard, Gauge, Headset, LayoutDashboard,
   LogOut, Menu, MessageSquare, Settings2, ShieldCheck, Users, Wallet, X, Zap, Coins, Receipt,
-  ListChecks, FileText, User, Share2, Layers, Disc3, Trophy,
+  ListChecks, FileText, User, Share2, Layers, Disc3, Trophy, Pickaxe,
 } from "lucide-react";
 import { Link, NavItem } from "./nav";
 import { navigate, useRoute, useSettings, useUser } from "../lib/store";
@@ -138,6 +138,7 @@ export const userNav = [
   { to: "/app", label: "Dashboard", icon: LayoutDashboard, end: true },
   { to: "/app/spin", label: "Daily Spin", icon: Disc3 },
   { to: "/app/feud", label: "Family Feud", icon: MessageSquare },
+  { to: "/app/goldmine", label: "Gold Mine", icon: Pickaxe },
   { to: "/app/earn", label: "Earn", icon: Briefcase },
   { to: "/app/tasks", label: "My Tasks", icon: ClipboardList },
   { to: "/app/wallet", label: "Wallet", icon: Wallet },
@@ -156,6 +157,7 @@ export const adminNav = [
   { to: "/admin/tasks", label: "Tasks", icon: ListChecks },
   { to: "/admin/spin", label: "Daily Spin", icon: Disc3 },
   { to: "/admin/feud", label: "Family Feud", icon: MessageSquare },
+  { to: "/admin/goldmine", label: "Gold Mine", icon: Pickaxe },
   { to: "/admin/submissions", label: "Submissions", icon: ClipboardList },
   { to: "/admin/withdrawals", label: "Withdrawals", icon: Coins },
   { to: "/admin/payments", label: "Payments", icon: CreditCard },

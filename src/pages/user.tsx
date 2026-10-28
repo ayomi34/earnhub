@@ -48,7 +48,7 @@ export function Dashboard() {
       img: null,
     },
     {
-      to: "/app/earn",
+      to: "/app/goldmine",
       label: "Gold Mine",
       desc: "Dig and earn coins!",
       img: "/images/game-goldmine.png",
@@ -414,7 +414,7 @@ const GAME_LIST = [
     thumb: <TriviaThumb />,
   },
   {
-    to: "/app/earn",
+    to: "/app/goldmine",
     label: "Gold Mine",
     desc: "Dig and earn coins!",
     tags: [{ text: "Strategy", color: "text-green-600 bg-green-50 border border-green-200" }, { text: "Earn", color: "text-slate-600 bg-slate-100" }],

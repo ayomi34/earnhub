@@ -7,6 +7,8 @@ export type TxType =
   | "referral_bonus"
   | "spin_reward"
   | "feud_reward"
+  | "gold_mine_join"
+  | "gold_mine_conversion"
   | "withdrawal"
   | "refund"
   | "adjustment";
@@ -288,6 +290,54 @@ export interface FeudGameSession {
   rounds: FeudRoundAnswerRecord[];
 }
 
+/* ================= GOLD MINE ================= */
+
+export type GoldMineCycleStatus = "active" | "completed" | "cancelled";
+export type GoldMineConversionStatus = "pending" | "approved" | "rejected";
+
+export interface GoldMineLevelConfig {
+  levelId: string;       // references MembershipLevel.id
+  cycleDays: number;     // duration: 3 | 7 | 14 | 21 | 30
+  goldReward: number;    // gold coins earned per completed cycle
+  joinCost: number;      // naira deducted from wallet to join (0 = free)
+  maxActiveCycles: number; // simultaneous active cycles allowed
+}
+
+export interface GoldMineConfig {
+  enabled: boolean;
+  goldToCashRate: number;      // naira per 1 gold coin (e.g. 10 → ₦10/gold)
+  minConversionGold: number;   // minimum gold coins required to convert
+  conversionFeePercent: number; // percentage fee on cash payout (0–100)
+  maxDailyConversions: number; // per-user daily conversion limit (0 = unlimited)
+  levelConfigs: GoldMineLevelConfig[];
+}
+
+export interface GoldMineCycle {
+  id: string;
+  userId: string;
+  levelId: string;
+  goldReward: number;
+  joinCost: number;
+  status: GoldMineCycleStatus;
+  startedAt: number;
+  endsAt: number;
+  completedAt: number | null;
+  goldCredited: boolean;
+}
+
+export interface GoldMineConversion {
+  id: string;
+  userId: string;
+  goldAmount: number;
+  cashAmount: number;    // after fee
+  feeAmount: number;
+  status: GoldMineConversionStatus;
+  reference: string;
+  note: string | null;
+  createdAt: number;
+  processedAt: number | null;
+}
+
 export interface Settings {
   platformName: string;
   supportEmail: string;
@@ -299,6 +349,7 @@ export interface Settings {
   paymentMode: "live";
   spin: SpinConfig;
   feud: FeudConfig;
+  goldMine: GoldMineConfig;
 }
 
 export interface AuditLog {
@@ -329,6 +380,8 @@ export interface DB {
   feudQuestionCount: number;       // real DB total — populated from count query, not row fetch
   feudActiveQuestionCount: number; // real DB active count
   feudSessions: FeudGameSession[];
+  goldMineCycles: GoldMineCycle[];
+  goldMineConversions: GoldMineConversion[];
   settings: Settings;
   session: { userId: string } | null;
 }
