@@ -8,6 +8,7 @@ import {
   hydrateGoldMine, joinGoldMineCycle, completeMatureCycles,
   requestGoldConversion, getGoldBalance,
 } from "../lib/services";
+import { DEFAULT_GOLD_MINE_CONFIG } from "../lib/db";
 import { Badge, Button, Modal, fmtN } from "../components/ui";
 import type { GoldMineCycle, GoldMineConversion } from "../lib/types";
 
@@ -126,7 +127,7 @@ export function GoldMinePage() {
   const user = useUser();
   const db = useData();
 
-  const cfg = db.settings.goldMine;
+  const cfg = db.settings.goldMine ?? DEFAULT_GOLD_MINE_CONFIG;
   const cycles = useMemo(
     () => (db.goldMineCycles ?? []).filter((c) => c.userId === user?.id),
     [db.goldMineCycles, user?.id]

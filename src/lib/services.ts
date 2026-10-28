@@ -1,4 +1,4 @@
-import { read, update, uid, genRef, DEFAULT_SPIN_CONFIG } from "./db";
+import { read, update, uid, genRef, DEFAULT_SPIN_CONFIG, DEFAULT_GOLD_MINE_CONFIG } from "./db";
 import { supabase, REQUIRE_EMAIL_CONFIRMATION } from "./supabase";
 import type {
   Balances, MembershipLevel, Notification, Payment, Profile, Settings,
@@ -581,11 +581,13 @@ export async function hydrateContentFromSupabase() {
     if (typeof feudActiveCountRes.count === "number") db.feudActiveQuestionCount = feudActiveCountRes.count;
     if (Array.isArray(tasks.data)) db.tasks = tasks.data.map(mapTask);
     if (settingsRes.data?.payload) {
+      const p = settingsRes.data.payload as any;
       db.settings = {
         ...db.settings,
-        ...settingsRes.data.payload,
-        spin: normalizeSpinConfig((settingsRes.data.payload as any).spin),
-        feud: normalizeFeudConfig((settingsRes.data.payload as any).feud),
+        ...p,
+        spin: normalizeSpinConfig(p.spin),
+        feud: normalizeFeudConfig(p.feud),
+        goldMine: { ...DEFAULT_GOLD_MINE_CONFIG, ...(p.goldMine ?? {}) },
       };
     }
   });
