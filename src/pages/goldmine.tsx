@@ -4,6 +4,7 @@ import {
   Pickaxe, RefreshCw, TrendingUp, Zap,
 } from "lucide-react";
 import { useData, useUser } from "../lib/store";
+import { read } from "../lib/db";
 import {
   hydrateGoldMine, joinGoldMineCycle, completeMatureCycles,
   requestGoldConversion, getGoldBalance,
@@ -125,7 +126,7 @@ function ConversionCard({ conv }: { conv: GoldMineConversion }) {
 
 export function GoldMinePage() {
   const user = useUser();
-  const db = useData();
+  const db = useData(read);
 
   const cfg = db.settings.goldMine ?? DEFAULT_GOLD_MINE_CONFIG;
   const cycles = useMemo(

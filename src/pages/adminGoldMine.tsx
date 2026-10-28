@@ -4,6 +4,7 @@ import {
   Save, Trash2, X,
 } from "lucide-react";
 import { useData, useSettings, useUser } from "../lib/store";
+import { read } from "../lib/db";
 import {
   adminGetAllConversions, adminGetAllGoldMineCycles,
   adminApproveConversion, adminRejectConversion,
@@ -27,7 +28,7 @@ type AdminTab = "conversions" | "cycles" | "settings";
 
 export function AdminGoldMine() {
   const user = useUser();
-  const db = useData();
+  const db = useData(read);
   const s = useSettings();
 
   const [tab, setTab] = useState<AdminTab>("conversions");
