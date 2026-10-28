@@ -101,7 +101,7 @@ export function AdminGoldMine() {
     setSavingSettings(true);
     try {
       await adminSaveSettings(user.id, { ...s, goldMine: cfg });
-      setSuccess("Gold Mine settings saved.");
+      setSuccess("Zentra settings saved.");
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -131,7 +131,7 @@ export function AdminGoldMine() {
     <div className="space-y-6">
       <div className="flex items-center gap-3">
         <div>
-          <h1 className="text-[20px] font-bold text-slate-900">Gold Mine Admin</h1>
+          <h1 className="text-[20px] font-bold text-slate-900">Zentra Admin</h1>
           <p className="mt-0.5 text-sm text-slate-500">Manage cycles, conversions, and configuration</p>
         </div>
         {pendingConversions.length > 0 && (
@@ -270,7 +270,7 @@ export function AdminGoldMine() {
 
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-700">Gold Mine Enabled</p>
+                <p className="text-sm font-medium text-slate-700">Zentra Enabled</p>
                 <p className="text-xs text-slate-400">Allow users to join cycles and convert gold</p>
               </div>
               <button

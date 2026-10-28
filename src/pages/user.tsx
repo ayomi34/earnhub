@@ -1,9 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle, ArrowRight, Briefcase, CheckCircle2, ClipboardList, Clock,
   Coins, CreditCard, Hourglass, Layers, Lock, MailWarning, Play, Receipt,
   Send, Share2, TrendingUp, Users, Wallet, Trophy, Disc3, MessageSquare,
-  History, UserPlus, Search, Medal, Crown,
+  History, UserPlus, Search, Medal, Crown, Zap,
 } from "lucide-react";
 import { Link } from "../components/nav";
 import {
@@ -14,9 +14,150 @@ import {
   getBalances, getLevel, getMySubmissions, getTaskViews, getUserLevel,
   getWalletTx, startTask, submitTaskProof, todaySubmissionCount,
 } from "../lib/services";
-import { read as readDB } from "../lib/db";
+import { read as readDB, DEFAULT_GOLD_MINE_CONFIG } from "../lib/db";
 import type { TaskView } from "../lib/services";
 import { navigate, useAction, useData, useDBVersion, useSettings, useUser } from "../lib/store";
+import {
+  hydrateGoldMine, completeMatureCycles, getGoldBalance,
+} from "../lib/services";
+
+/* ================= ZENTRA DASHBOARD CARD ================= */
+
+function ZentraMiniCore({ active }: { active: boolean }) {
+  return (
+    <div className="relative flex h-16 w-16 shrink-0 items-center justify-center select-none">
+      <div
+        className="absolute h-16 w-16 rounded-full border border-cyan-400/40"
+        style={{ animation: active ? "zdash-spin 6s linear infinite" : "none", opacity: active ? 1 : 0.25 }}
+      >
+        <div className="absolute -top-1 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-cyan-400" />
+      </div>
+      <div
+        className="absolute h-10 w-10 rounded-full border border-violet-400/40"
+        style={{ animation: active ? "zdash-spin-rev 4s linear infinite" : "none", opacity: active ? 1 : 0.25 }}
+      >
+        <div className="absolute -top-0.5 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-violet-400" />
+      </div>
+      <div
+        className={`relative z-10 flex h-8 w-8 items-center justify-center rounded-full ${
+          active ? "bg-gradient-to-br from-cyan-400 to-violet-500 shadow-[0_0_12px_rgba(139,92,246,0.5)]" : "bg-slate-700"
+        }`}
+        style={{ animation: active ? "zdash-pulse 2s ease-in-out infinite" : "none" }}
+      >
+        <Zap className={`h-4 w-4 ${active ? "text-white" : "text-slate-500"}`} />
+      </div>
+    </div>
+  );
+}
+
+function ZentraDashCard() {
+  const user = useUser();
+  const db = useData(readDB);
+
+  const cfg = db.settings.goldMine ?? DEFAULT_GOLD_MINE_CONFIG;
+  const cycles = useMemo(
+    () => (db.goldMineCycles ?? []).filter((c) => c.userId === user?.id),
+    [db.goldMineCycles, user?.id]
+  );
+  const activeCycles = cycles.filter((c) => c.status === "active");
+  const goldBalance = user ? getGoldBalance(user.id) : 0;
+
+  const activeMembership = db.memberships.find(
+    (m) => m.userId === user?.id && m.status === "active"
+  );
+  const levelCfg = activeMembership
+    ? cfg.levelConfigs?.find((lc) => lc.levelId === activeMembership.levelId)
+    : null;
+
+  // live countdown ticker
+  const [, setTick] = useState(0);
+  const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    tickRef.current = setInterval(() => setTick((t) => t + 1), 1_000);
+    return () => { if (tickRef.current) clearInterval(tickRef.current); };
+  }, []);
+
+  // hydrate on mount
+  useEffect(() => {
+    if (!user) return;
+    void hydrateGoldMine(user.id).then(() => completeMatureCycles(user.id));
+  }, [user?.id]);
+
+  if (!cfg.enabled) return null;
+
+  const activeC = activeCycles[0];
+  let progressPct = 0;
+  let timeLabel = "";
+  if (activeC) {
+    const total = activeC.endsAt - activeC.startedAt;
+    const elapsed = Date.now() - activeC.startedAt;
+    progressPct = Math.min(100, Math.max(0, Math.round((elapsed / total) * 100)));
+    const diff = activeC.endsAt - Date.now();
+    if (diff > 0) {
+      const d = Math.floor(diff / 86_400_000);
+      const h = Math.floor((diff % 86_400_000) / 3_600_000);
+      const m = Math.floor((diff % 3_600_000) / 60_000);
+      const s = Math.floor((diff % 60_000) / 1_000);
+      timeLabel = d > 0 ? `${d}d ${h}h ${m}m` : h > 0 ? `${h}h ${m}m ${s}s` : `${m}m ${s}s`;
+    } else {
+      timeLabel = "Completing...";
+    }
+  }
+
+  return (
+    <>
+      <style>{`
+        @keyframes zdash-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes zdash-spin-rev { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
+        @keyframes zdash-pulse { 0%,100% { box-shadow: 0 0 10px rgba(139,92,246,0.4); } 50% { box-shadow: 0 0 20px rgba(139,92,246,0.75); } }
+      `}</style>
+      <div
+        onClick={() => navigate("/app/goldmine")}
+        className="cursor-pointer overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 p-4 transition-all active:scale-[0.98]"
+      >
+        <div className="flex items-center gap-4">
+          <ZentraMiniCore active={activeCycles.length > 0} />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-base font-bold text-white">Zentra</p>
+              <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${activeCycles.length > 0 ? "bg-cyan-500/20 text-cyan-400" : "bg-slate-700 text-slate-400"}`}>
+                {activeCycles.length > 0 ? "RUNNING" : "IDLE"}
+              </span>
+            </div>
+            {activeC ? (
+              <>
+                <p className="mt-0.5 text-xs text-slate-400">{timeLabel} remaining</p>
+                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-700">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-violet-500 transition-all"
+                    style={{ width: `${progressPct}%` }}
+                  />
+                </div>
+                <div className="mt-1.5 flex items-center justify-between">
+                  <p className="text-[10px] text-slate-500">{progressPct}% complete</p>
+                  <p className="flex items-center gap-0.5 text-[10px] font-semibold text-violet-400">
+                    <Coins className="h-3 w-3" /> {activeC.goldReward} gold
+                  </p>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="mt-0.5 text-xs text-slate-400">
+                  {goldBalance > 0 ? `${goldBalance} gold ready to convert` : levelCfg ? "Ready to activate" : "Membership needed"}
+                </p>
+                <p className="mt-1.5 text-[10px] text-slate-500">
+                  {levelCfg
+                    ? `${levelCfg.cycleDays}-day cycle · ${levelCfg.goldReward} gold reward`
+                    : "Upgrade membership to unlock"}
+                </p>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
 
 /* ================= DASHBOARD ================= */
 
@@ -49,8 +190,8 @@ export function Dashboard() {
     },
     {
       to: "/app/goldmine",
-      label: "Gold Mine",
-      desc: "Dig and earn coins!",
+      label: "Zentra",
+      desc: "Activate cycles, earn gold!",
       img: "/images/game-goldmine.png",
       imgPos: "object-top",
     },
@@ -94,6 +235,9 @@ export function Dashboard() {
           <span className="text-sm font-black text-[#7a4f00]">{fmtN(bal.available)}</span>
         </div>
       </div>
+
+      {/* ── Zentra widget ── */}
+      <ZentraDashCard />
 
       {/* ── Featured Games ── */}
       <div>
@@ -415,10 +559,10 @@ const GAME_LIST = [
   },
   {
     to: "/app/goldmine",
-    label: "Gold Mine",
-    desc: "Dig and earn coins!",
+    label: "Zentra",
+    desc: "Activate cycles, earn gold!",
     tags: [{ text: "Strategy", color: "text-green-600 bg-green-50 border border-green-200" }, { text: "Earn", color: "text-slate-600 bg-slate-100" }],
-    thumb: <GameThumb src="/images/game-goldmine.png" alt="Gold Mine" className="object-top" />,
+    thumb: <GameThumb src="/images/game-goldmine.png" alt="Zentra" className="object-top" />,
   },
   {
     to: "/app/feud",
