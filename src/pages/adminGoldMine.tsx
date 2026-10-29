@@ -70,7 +70,7 @@ export function AdminGoldMine() {
     try {
       await adminApproveConversion(user.id, conv.id);
       setConversions((prev) => prev.map((c) => c.id === conv.id ? { ...c, status: "approved" as const } : c));
-      setSuccess(`Approved ${conv.goldAmount} gold → ${fmtN(conv.cashAmount)} for user.`);
+      setSuccess(`Approved ${conv.goldAmount} ZNTR → ${fmtN(conv.cashAmount)} for user.`);
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -188,7 +188,7 @@ export function AdminGoldMine() {
                   <div className="flex items-center gap-2">
                     <Coins className="h-4 w-4 text-yellow-500" />
                     <p className="text-sm font-semibold text-slate-800">
-                      {conv.goldAmount} gold → {fmtN(conv.cashAmount)}
+                      {conv.goldAmount} ZNTR → {fmtN(conv.cashAmount)}
                     </p>
                     {statusBadge(conv.status)}
                   </div>
@@ -242,7 +242,7 @@ export function AdminGoldMine() {
             <div key={c.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3">
               <div>
                 <p className="text-sm font-semibold text-slate-800">
-                  User: {c.userId.slice(0, 8)}… · {c.goldReward} gold
+                  User: {c.userId.slice(0, 8)}… · {c.goldReward} ZNTR
                 </p>
                 <p className="text-xs text-slate-400">
                   {new Date(c.startedAt).toLocaleDateString("en-NG")} → {new Date(c.endsAt).toLocaleDateString("en-NG")}
@@ -271,7 +271,7 @@ export function AdminGoldMine() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-slate-700">Zentra Enabled</p>
-                <p className="text-xs text-slate-400">Allow users to join cycles and convert gold</p>
+                <p className="text-xs text-slate-400">Allow users to join cycles and convert ZNTR</p>
               </div>
               <button
                 onClick={() => setCfg((p) => ({ ...p, enabled: !p.enabled }))}
@@ -283,7 +283,7 @@ export function AdminGoldMine() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">Gold → Cash Rate (₦/coin)</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1">ZNTR → Cash Rate (₦/ZNTR)</label>
                 <input
                   type="number" min={1}
                   value={cfg.goldToCashRate}
@@ -292,7 +292,7 @@ export function AdminGoldMine() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">Min Conversion (gold coins)</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1">Min Conversion (ZNTR)</label>
                 <input
                   type="number" min={1}
                   value={cfg.minConversionGold}
@@ -355,7 +355,7 @@ export function AdminGoldMine() {
                   <div>
                     <p className="text-sm font-semibold text-slate-800">{levelName}</p>
                     <p className="text-xs text-slate-500">
-                      {lc.cycleDays}d · {lc.goldReward} gold · {lc.joinCost > 0 ? fmtN(lc.joinCost) + " cost" : "free"} · max {lc.maxActiveCycles}
+                      {lc.cycleDays}d · {lc.goldReward} ZNTR · {lc.joinCost > 0 ? fmtN(lc.joinCost) + " cost" : "free"} · max {lc.maxActiveCycles}
                     </p>
                   </div>
                   <div className="flex gap-1">
@@ -389,7 +389,7 @@ export function AdminGoldMine() {
         {rejectModal && (
           <div className="space-y-4">
             <p className="text-sm text-slate-600">
-              Reject conversion of <strong>{rejectModal.goldAmount} gold</strong> (≈ {fmtN(rejectModal.cashAmount)}) — the user's gold will be returned.
+              Reject conversion of <strong>{rejectModal.goldAmount} ZNTR</strong> (≈ {fmtN(rejectModal.cashAmount)}) — the user's ZNTR balance will be restored.
             </p>
             <div>
               <label className="block text-xs font-medium text-slate-700 mb-1">Reason (optional)</label>
@@ -440,7 +440,7 @@ export function AdminGoldMine() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">Gold Reward</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1">ZNTR Reward</label>
                 <input
                   type="number" min={1}
                   value={editLevel.goldReward}

@@ -136,18 +136,18 @@ function ZentraDashCard() {
                 <div className="mt-1.5 flex items-center justify-between">
                   <p className="text-[10px] text-slate-500">{progressPct}% complete</p>
                   <p className="flex items-center gap-0.5 text-[10px] font-semibold text-violet-400">
-                    <Coins className="h-3 w-3" /> {activeC.goldReward} gold
+                    <Coins className="h-3 w-3" /> {activeC.goldReward} ZNTR
                   </p>
                 </div>
               </>
             ) : (
               <>
                 <p className="mt-0.5 text-xs text-slate-400">
-                  {goldBalance > 0 ? `${goldBalance} gold ready to convert` : levelCfg ? "Ready to activate" : "Membership needed"}
+                  {goldBalance > 0 ? `${goldBalance} ZNTR ready to convert` : levelCfg ? "Ready to activate" : "Membership needed"}
                 </p>
                 <p className="mt-1.5 text-[10px] text-slate-500">
                   {levelCfg
-                    ? `${levelCfg.cycleDays}-day cycle · ${levelCfg.goldReward} gold reward`
+                    ? `${levelCfg.cycleDays}-day cycle · ${levelCfg.goldReward} ZNTR reward`
                     : "Upgrade membership to unlock"}
                 </p>
               </>
@@ -169,40 +169,6 @@ export function Dashboard() {
 
   const firstName = user.fullName.split(" ")[0];
 
-  const games = [
-    {
-      to: "/app/feud",
-      label: "Family Feud",
-      desc: "Guess the most popular answers!",
-      img: "/images/game-familyfeud.jpg",
-    },
-    {
-      to: "/app/spin",
-      label: "Spin Wheel",
-      desc: "Spin & win rewards!",
-      img: "/images/game-spinwheel.jpg",
-    },
-    {
-      to: "/app/earn",
-      label: "Trivia Quiz",
-      desc: "Test your knowledge!",
-      img: null,
-    },
-    {
-      to: "/app/goldmine",
-      label: "Zentra",
-      desc: "Activate cycles, earn gold!",
-      img: "/images/game-goldmine.png",
-      imgPos: "object-top",
-    },
-  ];
-
-  const quickActions = [
-    { to: "/app/spin",      icon: <Disc3 className="h-5 w-5 text-amber-600" />,   bg: "bg-amber-100",  label: "Daily Spin",    desc: "Free spins" },
-    { to: "/app/tasks",     icon: <History className="h-5 w-5 text-green-600" />,  bg: "bg-green-100",  label: "Your History",  desc: "View past games" },
-    { to: "/app/referrals", icon: <UserPlus className="h-5 w-5 text-rose-500" />,  bg: "bg-rose-100",   label: "Invite Friends", desc: "Get bonus points" },
-  ];
-
   return (
     <div className="space-y-5">
 
@@ -218,16 +184,15 @@ export function Dashboard() {
       )}
 
       {/* ── Hero banner ── */}
-      <div className="relative overflow-hidden rounded-2xl bg-[#1a4d2e] px-5 py-6 text-white">
-        {/* background leaf decoration */}
-        <div className="pointer-events-none absolute right-4 top-2 select-none text-[80px] opacity-20">🍃</div>
-        <div className="pointer-events-none absolute -right-4 bottom-0 select-none text-[100px] opacity-10">🏆</div>
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0f1c2e] to-[#1a0f3e] px-5 py-6 text-white">
+        <div className="pointer-events-none absolute right-2 top-2 select-none text-[80px] opacity-10">⚡</div>
+        <div className="pointer-events-none absolute -right-4 bottom-0 select-none text-[100px] opacity-10">🔮</div>
 
-        <p className="text-sm text-green-200">Welcome back,</p>
+        <p className="text-sm text-cyan-300">Welcome back,</p>
         <h1 className="mt-0.5 text-[20px] font-black leading-tight">
           {firstName} 👋
         </h1>
-        <p className="mt-1 text-sm text-green-200">Play your favourite games and win amazing rewards!</p>
+        <p className="mt-1 text-sm text-violet-200">Activate Zentra cycles and earn ZNTR rewards!</p>
 
         {/* Points pill */}
         <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#f0c040] px-4 py-2">
@@ -239,58 +204,35 @@ export function Dashboard() {
       {/* ── Zentra widget ── */}
       <ZentraDashCard />
 
-      {/* ── Featured Games ── */}
-      <div>
-        <div className="mb-3 flex items-center justify-between">
-          <p className="text-base font-bold text-slate-900">Featured Games</p>
-          <button onClick={() => navigate("/app/games")} className="text-sm font-semibold text-green-600 hover:underline">
-            View all →
-          </button>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          {games.map((g) => (
-            <div
-              key={g.label}
-              onClick={() => navigate(g.to)}
-              className="cursor-pointer overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm transition-all active:scale-[0.97]"
-            >
-              {/* thumbnail — square aspect ratio */}
-              <div className="aspect-square overflow-hidden bg-slate-100">
-                {g.img
-                  ? <img src={g.img} alt={g.label} className={`h-full w-full object-cover ${(g as any).imgPos ?? "object-center"}`} />
-                  : <div className="flex h-full items-center justify-center bg-[#1a3a6b]"><span className="text-4xl">💡</span></div>
-                }
-              </div>
-              {/* info */}
-              <div className="px-3 pt-2.5 pb-3">
-                <p className="text-sm font-bold text-slate-900">{g.label}</p>
-                <p className="mt-0.5 text-[11px] text-slate-500">{g.desc}</p>
-                <button className="mt-2.5 w-full rounded-full bg-green-600 py-1.5 text-xs font-bold text-white transition-colors hover:bg-green-700">
-                  Play Now
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ── Quick Actions ── */}
-      <div>
-        <p className="mb-3 text-base font-bold text-slate-900">Quick Actions</p>
-        <div className="grid grid-cols-3 gap-3">
-          {quickActions.map((a) => (
-            <div
-              key={a.label}
-              onClick={() => navigate(a.to)}
-              className="flex cursor-pointer flex-col items-center gap-2 rounded-2xl border border-slate-100 bg-white px-2 py-4 text-center shadow-sm transition-all active:scale-[0.97]"
-            >
-              <span className={`flex h-11 w-11 items-center justify-center rounded-xl ${a.bg}`}>
-                {a.icon}
+      {/* ── Zentra feature highlight ── */}
+      <div
+        onClick={() => navigate("/app/goldmine")}
+        className="cursor-pointer overflow-hidden rounded-2xl border border-cyan-900/40 bg-gradient-to-br from-slate-900 to-[#0d1a2e] p-5 transition-all active:scale-[0.98]"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-cyan-500/20">
+                <Zap className="h-4 w-4 text-cyan-400" />
               </span>
-              <div>
-                <p className="text-xs font-bold text-slate-800 leading-tight">{a.label}</p>
-                <p className="mt-0.5 text-[10px] text-slate-400">{a.desc}</p>
-              </div>
+              <p className="font-bold text-white">Zentra Mining</p>
+            </div>
+            <p className="mt-2 text-sm text-slate-300 leading-relaxed">
+              Activate mining cycles and earn ZNTR. Convert your ZNTR balance to cash at any time.
+            </p>
+          </div>
+          <ArrowRight className="mt-1 h-5 w-5 shrink-0 text-cyan-400" />
+        </div>
+        <div className="mt-4 grid grid-cols-3 gap-2">
+          {[
+            { label: "Activate", icon: "⚡", desc: "Start a cycle" },
+            { label: "Earn ZNTR", icon: "💎", desc: "Cycle rewards" },
+            { label: "Convert", icon: "💰", desc: "ZNTR → Cash" },
+          ].map((f) => (
+            <div key={f.label} className="rounded-xl bg-slate-800/60 px-3 py-3 text-center">
+              <span className="text-lg">{f.icon}</span>
+              <p className="mt-1 text-[11px] font-bold text-white">{f.label}</p>
+              <p className="text-[9px] text-slate-400">{f.desc}</p>
             </div>
           ))}
         </div>
@@ -301,7 +243,7 @@ export function Dashboard() {
         <div className="overflow-hidden rounded-2xl bg-green-600 p-5 text-white">
           <p className="font-bold">Activate a membership</p>
           <p className="mt-1 text-sm text-green-100">
-            Unlock the task catalogue and start earning real rewards.
+            Unlock Zentra mining cycles and start earning ZNTR rewards.
           </p>
           <button
             onClick={() => navigate("/app/membership")}

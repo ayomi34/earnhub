@@ -1639,7 +1639,7 @@ export async function adminApproveConversion(adminId: string, conversionId: stri
   const { error: txErr } = await supabase.from("wallet_transactions").insert({
     id: txId, user_id: row.user_id, type: "gold_mine_conversion",
     direction: "credit", amount: row.cash_amount, status: "approved",
-    description: `Gold Mine conversion — ${row.gold_amount} gold coins`,
+    description: `Zentra conversion — ${row.gold_amount} ZNTR`,
     reference: row.reference, source_id: conversionId,
   });
   if (txErr) throw new SvcError(`Failed to credit wallet: ${txErr.message}`);
@@ -1651,8 +1651,8 @@ export async function adminApproveConversion(adminId: string, conversionId: stri
 
   await supabase.from("notifications").insert({
     id: uid(), user_id: row.user_id, type: "system",
-    title: "Gold conversion approved",
-    body: `Your conversion of ${row.gold_amount} gold coins to ₦${row.cash_amount.toLocaleString()} has been approved and credited to your wallet.`,
+    title: "ZNTR conversion approved",
+    body: `Your conversion of ${row.gold_amount} ZNTR to ₦${row.cash_amount.toLocaleString()} has been approved and credited to your wallet.`,
     read: false,
   });
 }
@@ -1671,10 +1671,31 @@ export async function adminRejectConversion(adminId: string, conversionId: strin
 
   await supabase.from("notifications").insert({
     id: uid(), user_id: row.user_id, type: "system",
-    title: "Gold conversion rejected",
-    body: `Your conversion request for ${row.gold_amount} gold coins was not approved. ${note ? `Reason: ${note}` : "Contact support for more information."} Your gold coins have been returned.`,
+    title: "ZNTR conversion rejected",
+    body: `Your conversion request for ${row.gold_amount} ZNTR was not approved. ${note ? `Reason: ${note}` : "Contact support for more information."} Your ZNTR balance has been restored.`,
     read: false,
   });
+}
+
+/** Fetch Zentra leaderboard from Supabase RPC. */
+export interface ZentraLeaderboardRow {
+  rank: number;
+  userId: string;
+  displayName: string;
+  totalZntr: number;
+  completedCycles: number;
+}
+
+export async function getZentraLeaderboard(period: "all" | "weekly" | "monthly" = "all"): Promise<ZentraLeaderboardRow[]> {
+  const { data, error } = await supabase.rpc("get_zentra_leaderboard", { period });
+  if (error) return [];
+  return (data ?? []).map((row: any) => ({
+    rank: Number(row.rank),
+    userId: row.user_id,
+    displayName: row.display_name,
+    totalZntr: Number(row.total_zntr),
+    completedCycles: Number(row.completed_cycles),
+  }));
 }
 
 export { getLevel as levelById };
