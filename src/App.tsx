@@ -7,7 +7,7 @@ import {
   Landing, HowItWorks, LevelsPage, FaqPage, TermsPage, PrivacyPage, ContactPage,
 } from "./pages/public";
 import { Login, Register, VerifyEmail, Forgot, ResetPassword } from "./pages/auth";
-import { Dashboard, Earn, MyTasks, GamesPage, LeaderboardPage } from "./pages/user";
+import { Dashboard, Earn, MyTasks, GamesPage } from "./pages/user";
 import { WalletPage, Transactions, Referrals, MembershipPage } from "./pages/account";
 import { SpinPage } from "./pages/spin";
 import { FeudGamePage } from "./pages/feud";
@@ -19,7 +19,7 @@ import {
 import { AdminSpin } from "./pages/adminSpin";
 import { AdminFeud } from "./pages/adminFeud";
 import { AdminGoldMine } from "./pages/adminGoldMine";
-import { GoldMinePage } from "./pages/goldmine";
+import { GoldMinePage, ZentraLeaderboardPage } from "./pages/goldmine";
 import { Button } from "./components/ui";
 
 function useScrollTop(path: string) {
@@ -107,7 +107,7 @@ export default function App() {
     "/app/earn": <Earn />,
     "/app/tasks": <MyTasks />,
     "/app/games": <GamesPage />,
-    "/app/leaderboard": <LeaderboardPage />,
+    "/app/leaderboard": <ZentraLeaderboardPage />,
     "/app/wallet": <WalletPage />,
     "/app/transactions": <Transactions />,
     "/app/referrals": <Referrals />,

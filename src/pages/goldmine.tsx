@@ -340,9 +340,7 @@ function ZentraLeaderboard({ currentUserId }: { currentUserId: string }) {
   );
 }
 
-/* ── Main page ───────────────────────────────────────────────────────── */
-
-type ZentraTab = "overview" | "leaderboard" | "history";
+/* ── Main Zentra page (no tabs) ──────────────────────────────────────── */
 
 export function GoldMinePage() {
   const user = useUser();
@@ -370,7 +368,6 @@ export function GoldMinePage() {
   const activeCycles = cycles.filter((c) => c.status === "active");
   const completedCycles = cycles.filter((c) => c.status === "completed");
 
-  const [tab, setTab] = useState<ZentraTab>("overview");
   const [loading, setLoading] = useState(false);
   const [convModal, setConvModal] = useState(false);
   const [goldInput, setGoldInput] = useState("");
@@ -451,21 +448,6 @@ export function GoldMinePage() {
           </p>
         </div>
 
-        {/* Tab bar */}
-        <div className="flex gap-1 rounded-lg bg-slate-100 p-1">
-          {(["overview", "leaderboard", "history"] as ZentraTab[]).map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`flex-1 rounded-md py-2 text-sm font-semibold transition-colors ${
-                tab === t ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              {t === "overview" ? "⚡ Overview" : t === "leaderboard" ? "🏆 Leaderboard" : "📋 History"}
-            </button>
-          ))}
-        </div>
-
         {/* Feedback banners */}
         {error && (
           <div className="flex items-start gap-2.5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -480,221 +462,198 @@ export function GoldMinePage() {
           </div>
         )}
 
-        {/* ── OVERVIEW TAB ── */}
-        {tab === "overview" && (
-          <>
-            {/* Animated core + primary action */}
-            <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-center">
-              <ZentraCore active={activeCycles.length > 0} />
+        {/* Animated core + primary action */}
+        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-center">
+          <ZentraCore active={activeCycles.length > 0} />
 
-              <p className={`mt-3 text-sm font-semibold ${activeCycles.length > 0 ? "text-cyan-400" : "text-slate-400"}`}>
-                {activeCycles.length > 0
-                  ? `${activeCycles.length} cycle${activeCycles.length > 1 ? "s" : ""} running`
-                  : "No active cycles"}
+          <p className={`mt-3 text-sm font-semibold ${activeCycles.length > 0 ? "text-cyan-400" : "text-slate-400"}`}>
+            {activeCycles.length > 0
+              ? `${activeCycles.length} cycle${activeCycles.length > 1 ? "s" : ""} running`
+              : "No active cycles"}
+          </p>
+
+          {levelCfg ? (
+            <div className="mt-4">
+              <Button
+                className="w-full max-w-xs !bg-gradient-to-r !from-cyan-500 !to-violet-600 !text-white hover:opacity-90"
+                onClick={handleJoin}
+                disabled={loading || activeCycles.length >= levelCfg.maxActiveCycles}
+              >
+                {loading ? (
+                  <><RefreshCw className="h-4 w-4 animate-spin" /> Activating...</>
+                ) : activeCycles.length >= levelCfg.maxActiveCycles ? (
+                  "Max cycles active"
+                ) : (
+                  <>
+                    <Zap className="h-4 w-4" />
+                    {levelCfg.joinCost > 0
+                      ? `Activate Zentra — ${fmtN(levelCfg.joinCost)}`
+                      : "Activate Zentra — Free"}
+                  </>
+                )}
+              </Button>
+              <p className="mt-2 text-xs text-slate-500">
+                {levelCfg.cycleDays}-day cycle · {levelCfg.goldReward} ZNTR reward
               </p>
-
-              {levelCfg ? (
-                <div className="mt-4">
-                  <Button
-                    className="w-full max-w-xs !bg-gradient-to-r !from-cyan-500 !to-violet-600 !text-white hover:opacity-90"
-                    onClick={handleJoin}
-                    disabled={loading || activeCycles.length >= levelCfg.maxActiveCycles}
-                  >
-                    {loading ? (
-                      <><RefreshCw className="h-4 w-4 animate-spin" /> Activating...</>
-                    ) : activeCycles.length >= levelCfg.maxActiveCycles ? (
-                      "Max cycles active"
-                    ) : (
-                      <>
-                        <Zap className="h-4 w-4" />
-                        {levelCfg.joinCost > 0
-                          ? `Activate Zentra — ${fmtN(levelCfg.joinCost)}`
-                          : "Activate Zentra — Free"}
-                      </>
-                    )}
-                  </Button>
-                  <p className="mt-2 text-xs text-slate-500">
-                    {levelCfg.cycleDays}-day cycle · {levelCfg.goldReward} ZNTR reward
-                  </p>
-                </div>
-              ) : (
-                <div className="mt-4">
-                  <p className="text-xs text-slate-400 mb-3">Membership required to activate Zentra cycles</p>
-                  <Button
-                    variant="outline"
-                    className="!border-slate-600 !text-slate-300 hover:!bg-slate-800"
-                    onClick={() => { window.location.hash = "#/app/membership"; }}
-                  >
-                    View Membership Plans
-                  </Button>
-                </div>
-              )}
             </div>
+          ) : (
+            <div className="mt-4">
+              <p className="text-xs text-slate-400 mb-3">Membership required to activate Zentra cycles</p>
+              <Button
+                variant="outline"
+                className="!border-slate-600 !text-slate-300 hover:!bg-slate-800"
+                onClick={() => { window.location.hash = "#/app/membership"; }}
+              >
+                View Membership Plans
+              </Button>
+            </div>
+          )}
+        </div>
 
-            {/* Stats row */}
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <div className="rounded-xl border border-violet-200 bg-violet-50 p-4">
-                <p className="text-xs font-medium text-violet-600">ZNTR Balance</p>
-                <p className="mt-1 flex items-center gap-1 text-2xl font-bold text-violet-700">
-                  <Coins className="h-5 w-5" />
-                  {goldBalance}
-                </p>
-                <p className="mt-0.5 text-[11px] text-violet-400">≈ {fmtN(netCash)} after fee</p>
+        {/* Stats row */}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="rounded-xl border border-violet-200 bg-violet-50 p-4">
+            <p className="text-xs font-medium text-violet-600">ZNTR Balance</p>
+            <p className="mt-1 flex items-center gap-1 text-2xl font-bold text-violet-700">
+              <Coins className="h-5 w-5" />
+              {goldBalance}
+            </p>
+            <p className="mt-0.5 text-[11px] text-violet-400">≈ {fmtN(netCash)} after fee</p>
+          </div>
+          <div className="rounded-xl border border-cyan-200 bg-cyan-50 p-4">
+            <p className="text-xs font-medium text-cyan-600">Active Cycles</p>
+            <p className="mt-1 text-2xl font-bold text-cyan-700">{activeCycles.length}</p>
+            <p className="mt-0.5 text-[11px] text-cyan-500">
+              {levelCfg ? `Max ${levelCfg.maxActiveCycles}` : "No active membership"}
+            </p>
+          </div>
+          <div className="col-span-2 rounded-xl border border-slate-200 bg-white p-4 sm:col-span-1">
+            <p className="text-xs font-medium text-slate-500">Conversion Rate</p>
+            <p className="mt-1 text-sm font-bold text-slate-800">
+              1 ZNTR = {fmtN(cfg.goldToCashRate)}
+            </p>
+            <p className="mt-0.5 text-[11px] text-slate-400">
+              {cfg.conversionFeePercent}% fee · min {cfg.minConversionGold} ZNTR
+            </p>
+          </div>
+        </div>
+
+        {/* Cycle plan card */}
+        {levelCfg && (
+          <div className="rounded-xl border border-slate-200 bg-white p-5">
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold text-slate-800">Your Cycle Plan</p>
+                <p className="mt-0.5 text-xs text-slate-500">Based on your active membership level</p>
               </div>
-              <div className="rounded-xl border border-cyan-200 bg-cyan-50 p-4">
-                <p className="text-xs font-medium text-cyan-600">Active Cycles</p>
-                <p className="mt-1 text-2xl font-bold text-cyan-700">{activeCycles.length}</p>
-                <p className="mt-0.5 text-[11px] text-cyan-500">
-                  {levelCfg ? `Max ${levelCfg.maxActiveCycles}` : "No active membership"}
-                </p>
+              <div className="flex items-center gap-1 rounded-full bg-violet-100 px-3 py-1 text-xs font-semibold text-violet-700">
+                <Coins className="h-3.5 w-3.5" />
+                {levelCfg.goldReward} ZNTR / cycle
               </div>
-              <div className="col-span-2 rounded-xl border border-slate-200 bg-white p-4 sm:col-span-1">
-                <p className="text-xs font-medium text-slate-500">Conversion Rate</p>
+            </div>
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div className="rounded-lg bg-slate-50 p-3">
+                <p className="text-xs text-slate-400">Duration</p>
+                <p className="mt-1 text-sm font-bold text-slate-800">{levelCfg.cycleDays} days</p>
+              </div>
+              <div className="rounded-lg bg-slate-50 p-3">
+                <p className="text-xs text-slate-400">Join Cost</p>
                 <p className="mt-1 text-sm font-bold text-slate-800">
-                  1 ZNTR = {fmtN(cfg.goldToCashRate)}
+                  {levelCfg.joinCost > 0 ? fmtN(levelCfg.joinCost) : "Free"}
                 </p>
-                <p className="mt-0.5 text-[11px] text-slate-400">
-                  {cfg.conversionFeePercent}% fee · min {cfg.minConversionGold} ZNTR
-                </p>
+              </div>
+              <div className="rounded-lg bg-slate-50 p-3">
+                <p className="text-xs text-slate-400">Max Active</p>
+                <p className="mt-1 text-sm font-bold text-slate-800">{levelCfg.maxActiveCycles}</p>
               </div>
             </div>
-
-            {/* Cycle plan card */}
-            {levelCfg && (
-              <div className="rounded-xl border border-slate-200 bg-white p-5">
-                <div className="mb-4 flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-800">Your Cycle Plan</p>
-                    <p className="mt-0.5 text-xs text-slate-500">Based on your active membership level</p>
-                  </div>
-                  <div className="flex items-center gap-1 rounded-full bg-violet-100 px-3 py-1 text-xs font-semibold text-violet-700">
-                    <Coins className="h-3.5 w-3.5" />
-                    {levelCfg.goldReward} ZNTR / cycle
-                  </div>
-                </div>
-                <div className="grid grid-cols-3 gap-3 text-center">
-                  <div className="rounded-lg bg-slate-50 p-3">
-                    <p className="text-xs text-slate-400">Duration</p>
-                    <p className="mt-1 text-sm font-bold text-slate-800">{levelCfg.cycleDays} days</p>
-                  </div>
-                  <div className="rounded-lg bg-slate-50 p-3">
-                    <p className="text-xs text-slate-400">Join Cost</p>
-                    <p className="mt-1 text-sm font-bold text-slate-800">
-                      {levelCfg.joinCost > 0 ? fmtN(levelCfg.joinCost) : "Free"}
-                    </p>
-                  </div>
-                  <div className="rounded-lg bg-slate-50 p-3">
-                    <p className="text-xs text-slate-400">Max Active</p>
-                    <p className="mt-1 text-sm font-bold text-slate-800">{levelCfg.maxActiveCycles}</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Convert ZNTR section */}
-            {goldBalance >= cfg.minConversionGold && (
-              <div className="rounded-xl border border-violet-200 bg-gradient-to-r from-violet-50 to-cyan-50 p-5">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <p className="flex items-center gap-2 text-sm font-semibold text-slate-800">
-                      <TrendingUp className="h-4 w-4 text-violet-600" />
-                      Convert ZNTR to Cash
-                    </p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      You have {goldBalance} ZNTR ready to convert
-                    </p>
-                  </div>
-                  <Button onClick={() => { setConvModal(true); setError(""); }}>
-                    <Coins className="h-4 w-4" /> Convert
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* Active cycles */}
-            {activeCycles.length > 0 && (
-              <section>
-                <h2 className="mb-3 text-sm font-semibold text-slate-700">Active Cycles</h2>
-                <div className="space-y-3">
-                  {activeCycles.map((c) => <CycleCard key={c.id} cycle={c} />)}
-                </div>
-              </section>
-            )}
-
-            {/* Empty state */}
-            {cycles.length === 0 && conversions.length === 0 && (
-              <div className="py-12 text-center">
-                <Zap className="mx-auto h-10 w-10 text-slate-200" />
-                <p className="mt-3 text-sm font-semibold text-slate-600">No activity yet</p>
-                <p className="mt-1 text-xs text-slate-400">
-                  Activate your first Zentra cycle to start earning ZNTR.
-                </p>
-              </div>
-            )}
-
-            {/* How it works */}
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
-              <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-700">
-                <Info className="h-4 w-4 text-brand" /> How Zentra Works
-              </p>
-              <ol className="space-y-2 text-xs text-slate-500">
-                <li className="flex gap-2"><span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-brand text-[10px] font-bold text-white">1</span> Activate a cycle with your active membership plan.</li>
-                <li className="flex gap-2"><span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-brand text-[10px] font-bold text-white">2</span> Wait for the cycle duration to complete.</li>
-                <li className="flex gap-2"><span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-brand text-[10px] font-bold text-white">3</span> ZNTR is credited to your balance automatically.</li>
-                <li className="flex gap-2"><span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-brand text-[10px] font-bold text-white">4</span> Convert {cfg.minConversionGold}+ ZNTR to cash at {fmtN(cfg.goldToCashRate)}/ZNTR (minus {cfg.conversionFeePercent}% fee).</li>
-                <li className="flex gap-2"><span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-brand text-[10px] font-bold text-white">5</span> Admin approves conversion and funds appear in your wallet.</li>
-              </ol>
-            </div>
-          </>
-        )}
-
-        {/* ── LEADERBOARD TAB ── */}
-        {tab === "leaderboard" && user && (
-          <ZentraLeaderboard currentUserId={user.id} />
-        )}
-
-        {/* ── HISTORY TAB ── */}
-        {tab === "history" && (
-          <div className="space-y-5">
-            {/* Conversion history */}
-            {conversions.length > 0 && (
-              <section>
-                <h2 className="mb-3 text-sm font-semibold text-slate-700">Conversion History</h2>
-                <div className="space-y-2">
-                  {conversions.map((c) => <ConversionCard key={c.id} conv={c} />)}
-                </div>
-              </section>
-            )}
-
-            {/* Completed cycles */}
-            {completedCycles.length > 0 && (
-              <section>
-                <h2 className="mb-3 text-sm font-semibold text-slate-700">Completed Cycles</h2>
-                <div className="space-y-3">
-                  {completedCycles.map((c) => <CycleCard key={c.id} cycle={c} />)}
-                </div>
-              </section>
-            )}
-
-            {/* All cycles if any */}
-            {cycles.filter((c) => c.status === "cancelled").length > 0 && (
-              <section>
-                <h2 className="mb-3 text-sm font-semibold text-slate-700">Cancelled Cycles</h2>
-                <div className="space-y-3">
-                  {cycles.filter((c) => c.status === "cancelled").map((c) => <CycleCard key={c.id} cycle={c} />)}
-                </div>
-              </section>
-            )}
-
-            {conversions.length === 0 && completedCycles.length === 0 && (
-              <div className="py-12 text-center">
-                <Coins className="mx-auto h-10 w-10 text-slate-200" />
-                <p className="mt-3 text-sm font-semibold text-slate-600">No history yet</p>
-                <p className="mt-1 text-xs text-slate-400">Completed cycles and conversions will appear here.</p>
-              </div>
-            )}
           </div>
         )}
+
+        {/* Convert ZNTR section */}
+        {goldBalance >= cfg.minConversionGold && (
+          <div className="rounded-xl border border-violet-200 bg-gradient-to-r from-violet-50 to-cyan-50 p-5">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+                  <TrendingUp className="h-4 w-4 text-violet-600" />
+                  Convert ZNTR to Cash
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  You have {goldBalance} ZNTR ready to convert
+                </p>
+              </div>
+              <Button onClick={() => { setConvModal(true); setError(""); }}>
+                <Coins className="h-4 w-4" /> Convert
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Active cycles */}
+        {activeCycles.length > 0 && (
+          <section>
+            <h2 className="mb-3 text-sm font-semibold text-slate-700">Active Cycles</h2>
+            <div className="space-y-3">
+              {activeCycles.map((c) => <CycleCard key={c.id} cycle={c} />)}
+            </div>
+          </section>
+        )}
+
+        {/* History — conversion history */}
+        {conversions.length > 0 && (
+          <section>
+            <h2 className="mb-3 text-sm font-semibold text-slate-700">Conversion History</h2>
+            <div className="space-y-2">
+              {conversions.map((c) => <ConversionCard key={c.id} conv={c} />)}
+            </div>
+          </section>
+        )}
+
+        {/* History — completed cycles */}
+        {completedCycles.length > 0 && (
+          <section>
+            <h2 className="mb-3 text-sm font-semibold text-slate-700">Completed Cycles</h2>
+            <div className="space-y-3">
+              {completedCycles.map((c) => <CycleCard key={c.id} cycle={c} />)}
+            </div>
+          </section>
+        )}
+
+        {/* History — cancelled cycles */}
+        {cycles.filter((c) => c.status === "cancelled").length > 0 && (
+          <section>
+            <h2 className="mb-3 text-sm font-semibold text-slate-700">Cancelled Cycles</h2>
+            <div className="space-y-3">
+              {cycles.filter((c) => c.status === "cancelled").map((c) => <CycleCard key={c.id} cycle={c} />)}
+            </div>
+          </section>
+        )}
+
+        {/* Empty state */}
+        {cycles.length === 0 && conversions.length === 0 && (
+          <div className="py-12 text-center">
+            <Zap className="mx-auto h-10 w-10 text-slate-200" />
+            <p className="mt-3 text-sm font-semibold text-slate-600">No activity yet</p>
+            <p className="mt-1 text-xs text-slate-400">
+              Activate your first Zentra cycle to start earning ZNTR.
+            </p>
+          </div>
+        )}
+
+        {/* How it works */}
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+          <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-700">
+            <Info className="h-4 w-4 text-brand" /> How Zentra Works
+          </p>
+          <ol className="space-y-2 text-xs text-slate-500">
+            <li className="flex gap-2"><span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-brand text-[10px] font-bold text-white">1</span> Activate a cycle with your active membership plan.</li>
+            <li className="flex gap-2"><span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-brand text-[10px] font-bold text-white">2</span> Wait for the cycle duration to complete.</li>
+            <li className="flex gap-2"><span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-brand text-[10px] font-bold text-white">3</span> ZNTR is credited to your balance automatically.</li>
+            <li className="flex gap-2"><span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-brand text-[10px] font-bold text-white">4</span> Convert {cfg.minConversionGold}+ ZNTR to cash at {fmtN(cfg.goldToCashRate)}/ZNTR (minus {cfg.conversionFeePercent}% fee).</li>
+            <li className="flex gap-2"><span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-brand text-[10px] font-bold text-white">5</span> Admin approves conversion and funds appear in your wallet.</li>
+          </ol>
+        </div>
 
         {/* Conversion modal */}
         <Modal
@@ -757,5 +716,25 @@ export function GoldMinePage() {
         </Modal>
       </div>
     </>
+  );
+}
+
+/* ── Standalone Zentra Leaderboard page ──────────────────────────────── */
+
+export function ZentraLeaderboardPage() {
+  const user = useUser();
+  return (
+    <div className="space-y-4 pb-8">
+      <div className="flex items-center gap-3">
+        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-violet-100">
+          <Trophy className="h-5 w-5 text-violet-500" />
+        </div>
+        <div>
+          <h1 className="text-xl font-bold text-slate-900">Zentra Leaderboard</h1>
+          <p className="text-xs text-slate-500">Top ZNTR earners across all miners</p>
+        </div>
+      </div>
+      {user && <ZentraLeaderboard currentUserId={user.id} />}
+    </div>
   );
 }
