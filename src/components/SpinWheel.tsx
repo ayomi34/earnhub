@@ -65,8 +65,8 @@ export default function SpinWheel({ segments, spinning, winningIndex, onSpin, di
     const fillDark  = isRed ? SEG_RED_DARK : SEG_YELLOW_DARK;
     const textColor = isRed ? "#fff"     : "#7a3e00";
 
-    // SVG centre and radius
-    const cx = 180, cy = 180, r = 148;
+    // SVG centre and wheel-face radius
+    const cx = 200, cy = 200, r = 148;
     const a0 = (i * arc - 90) * (Math.PI / 180);
     const a1 = ((i + 1) * arc - 90) * (Math.PI / 180);
     const x0 = cx + r * Math.cos(a0), y0 = cy + r * Math.sin(a0);
@@ -74,13 +74,16 @@ export default function SpinWheel({ segments, spinning, winningIndex, onSpin, di
     const large = arc > 180 ? 1 : 0;
     const d = `M ${cx} ${cy} L ${x0.toFixed(2)} ${y0.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${x1.toFixed(2)} ${y1.toFixed(2)} Z`;
 
-    // Label centred at 55% radius, oriented radially outward
+    // Label placed at 62% radius, text rotated so it reads tangentially
+    // (baseline runs along the wheel's circumference direction at that point)
     const mid = (i * arc + arc / 2 - 90) * (Math.PI / 180);
-    const labelR = 90;
+    const labelR = 95;
     const labelX = cx + labelR * Math.cos(mid);
     const labelY = cy + labelR * Math.sin(mid);
-    // rotate text so it reads outward along the spoke
-    const textRotate = (mid * 180) / Math.PI + 90;
+    // +90 makes the text baseline perpendicular to the radius (tangential).
+    // This means labels read as the segment sweeps past the pointer — correct for a wheel.
+    const midDeg = (mid * 180) / Math.PI;
+    const textRotate = midDeg + 90;
 
     const labelText = segLabel(seg);
     const isJP = labelText === "JACKPOT";
@@ -114,14 +117,14 @@ export default function SpinWheel({ segments, spinning, winningIndex, onSpin, di
         </svg>
       </div>
 
-      {/* SVG wheel */}
+      {/* SVG wheel — viewBox 400×420 gives room for the 3-D rim drop */}
       <svg
-        viewBox="0 0 360 360"
+        viewBox="0 0 400 420"
         className="relative z-10 block w-full h-auto"
         style={{
           filter: glow
-            ? "drop-shadow(0 0 18px rgba(200,22,29,0.45)) drop-shadow(0 8px 24px rgba(0,0,0,0.18))"
-            : "drop-shadow(0 6px 20px rgba(0,0,0,0.15))",
+            ? "drop-shadow(0 0 24px rgba(200,22,29,0.5)) drop-shadow(0 10px 30px rgba(0,0,0,0.25))"
+            : "drop-shadow(0 10px 32px rgba(0,0,0,0.22)) drop-shadow(0 2px 6px rgba(0,0,0,0.12))",
           transition: "filter 0.7s",
         }}
       >
@@ -132,58 +135,85 @@ export default function SpinWheel({ segments, spinning, winningIndex, onSpin, di
               <stop offset="100%" stopColor={fillDark} />
             </radialGradient>
           ))}
+
           <radialGradient id="flashGrad" cx="50%" cy="50%" r="55%">
             <stop offset="0%" stopColor="#fff" stopOpacity="0.85" />
             <stop offset="100%" stopColor="#fff" stopOpacity="0" />
           </radialGradient>
+
+          {/* Hub radial gradient — bright top-left to dark bottom-right */}
           <radialGradient id="hubGrad" cx="38%" cy="32%" r="75%">
             <stop offset="0%"   stopColor="#fff8dc" />
-            <stop offset="30%"  stopColor="#f5e08a" />
-            <stop offset="65%"  stopColor="#d4af37" />
-            <stop offset="100%" stopColor="#8b6914" />
+            <stop offset="28%"  stopColor="#f5e08a" />
+            <stop offset="62%"  stopColor="#d4af37" />
+            <stop offset="100%" stopColor="#7a5c0e" />
           </radialGradient>
-          <radialGradient id="rimGrad" cx="0%" cy="0%" r="140%">
+
+          {/* 3-D rim — bright on the left/top, dark on the bottom */}
+          <linearGradient id="rimTop" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%"   stopColor="#fff8dc" />
-            <stop offset="35%"  stopColor="#f0d060" />
-            <stop offset="65%"  stopColor="#c9a020" />
-            <stop offset="100%" stopColor="#8b6914" />
-          </radialGradient>
+            <stop offset="18%"  stopColor="#f5e08a" />
+            <stop offset="42%"  stopColor="#d4af37" />
+            <stop offset="65%"  stopColor="#c09820" />
+            <stop offset="82%"  stopColor="#a97f1f" />
+            <stop offset="100%" stopColor="#7a5c0e" />
+          </linearGradient>
+
+          {/* Bottom-edge shadow gives the 3-D depth illusion */}
+          <linearGradient id="rimBottom" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%"   stopColor="rgba(0,0,0,0)"   />
+            <stop offset="60%"  stopColor="rgba(0,0,0,0)"   />
+            <stop offset="100%" stopColor="rgba(0,0,0,0.45)" />
+          </linearGradient>
+
+          <filter id="rimShadow" x="-5%" y="-5%" width="115%" height="120%">
+            <feDropShadow dx="0" dy="7" stdDeviation="6" floodColor="#5a3a00" floodOpacity="0.55" />
+          </filter>
         </defs>
 
-        {/* Gold rim */}
-        <circle cx="180" cy="180" r="158" fill="url(#rimGrad)" />
-        <circle cx="180" cy="180" r="152" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1.5" />
-        <circle cx="180" cy="180" r="149" fill="none" stroke="rgba(0,0,0,0.15)" strokeWidth="1" />
+        {/* ── 3-D rim ── three concentric circles create the bevelled look */}
+        {/* Outermost dark-bottom layer (depth shadow) */}
+        <circle cx="200" cy="204" r="182" fill="#7a5c0e" />
+        {/* Main gold surface */}
+        <circle cx="200" cy="200" r="182" fill="url(#rimTop)" filter="url(#rimShadow)" />
+        {/* Inner bevel highlight */}
+        <circle cx="200" cy="198" r="176" fill="none"
+          stroke="rgba(255,255,255,0.55)" strokeWidth="2" />
+        {/* Inner rim edge shadow */}
+        <circle cx="200" cy="200" r="170" fill="none"
+          stroke="rgba(0,0,0,0.18)" strokeWidth="1.5" />
+        {/* Sheen: top-left bright arc */}
+        <circle cx="200" cy="200" r="182" fill="none"
+          stroke="rgba(255,248,200,0.7)" strokeWidth="3"
+          strokeDasharray="200 974" strokeDashoffset="70" />
 
-        {/* Spinning group */}
+        {/* ── Spinning group (wheel face r=148, inside the rim) ── */}
         <g
           style={{
-            transformOrigin: "180px 180px",
+            transformOrigin: "200px 200px",
             transform: `rotate(${rotation}deg)`,
-            transition: spinning ? "transform 5.2s cubic-bezier(0.12,0.8,0.16,1)" : "none",
+            transition: "transform 5.2s cubic-bezier(0.12,0.8,0.16,1)",
           }}
         >
           {paths.map(({ d, labelX, labelY, textRotate, textColor, isJP, i, labelText }) => (
             <g key={i}>
-              <path d={d} fill={`url(#sg${i})`} stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
+              <path d={d} fill={`url(#sg${i})`} stroke="rgba(255,255,255,0.18)" strokeWidth="1.2" />
 
-              {/* Flash overlay */}
               {flashIndex === i && (
                 <path d={d} fill="url(#flashGrad)"
                   style={{ animation: "seg-flash 0.4s ease-in-out 3" }} />
               )}
 
-              {/* Label — no stroke, clean text */}
               <text
                 x={labelX}
                 y={labelY}
                 fill={textColor}
-                fontSize={isJP ? "12" : "10.5"}
-                fontWeight="800"
+                fontSize={isJP ? "12.5" : "11"}
+                fontWeight="900"
                 textAnchor="middle"
                 dominantBaseline="middle"
                 fontFamily="'Arial Black', 'Arial Bold', Arial, sans-serif"
-                letterSpacing="0.3"
+                letterSpacing="0.5"
                 transform={`rotate(${textRotate} ${labelX} ${labelY})`}
               >
                 {labelText}
@@ -191,19 +221,23 @@ export default function SpinWheel({ segments, spinning, winningIndex, onSpin, di
             </g>
           ))}
 
-          {/* Divider lines between segments */}
-          <circle cx="180" cy="180" r="147" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1" />
+          {/* Outer edge of wheel face */}
+          <circle cx="200" cy="200" r="148" fill="none"
+            stroke="rgba(255,255,255,0.22)" strokeWidth="1.5" />
         </g>
 
-        {/* Hub */}
-        <circle cx="180" cy="180" r="34" fill="url(#hubGrad)"
-          style={{ filter: "drop-shadow(0 0 5px rgba(212,175,55,0.5))" }} />
-        <circle cx="180" cy="180" r="27" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1.5" />
-        <circle cx="180" cy="180" r="20" fill="none" stroke="rgba(180,130,20,0.5)" strokeWidth="1" />
-        <ellipse cx="175" cy="172" rx="9" ry="6" fill="rgba(255,255,255,0.28)" />
+        {/* ── Gold metallic hub ── */}
+        <circle cx="200" cy="200" r="36" fill="url(#hubGrad)"
+          style={{ filter: "drop-shadow(0 2px 6px rgba(100,60,0,0.5))" }} />
+        <circle cx="200" cy="200" r="29" fill="none"
+          stroke="rgba(255,255,255,0.45)" strokeWidth="1.5" />
+        <circle cx="200" cy="200" r="21" fill="none"
+          stroke="rgba(160,110,10,0.55)" strokeWidth="1" />
+        {/* Highlight glint */}
+        <ellipse cx="194" cy="192" rx="10" ry="7" fill="rgba(255,255,255,0.30)" />
 
         {/* Spin button overlay */}
-        <foreignObject x="146" y="146" width="68" height="68">
+        <foreignObject x="166" y="166" width="68" height="68">
           <button
             onClick={onSpin}
             disabled={disabled || spinning}
@@ -216,8 +250,8 @@ export default function SpinWheel({ segments, spinning, winningIndex, onSpin, di
         </foreignObject>
 
         {/* Hub label */}
-        <text x="180" y="183" textAnchor="middle" dominantBaseline="middle"
-          fill="#7a5c0e" fontSize="9" fontWeight="900"
+        <text x="200" y="203" textAnchor="middle" dominantBaseline="middle"
+          fill="#7a5c0e" fontSize="9.5" fontWeight="900"
           fontFamily="'Arial Black', Arial, sans-serif"
           letterSpacing="1.2"
           style={{ pointerEvents: "none" }}>
@@ -225,10 +259,9 @@ export default function SpinWheel({ segments, spinning, winningIndex, onSpin, di
         </text>
       </svg>
 
-      {/* Spinning indicator on hub */}
       {spinning && (
-        <div className="absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
-          <RotateCw className="h-4 w-4 text-amber-800 animate-spin opacity-0" />
+        <div className="pointer-events-none absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2">
+          <RotateCw className="h-4 w-4 animate-spin text-amber-800 opacity-0" />
         </div>
       )}
 
