@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle, ArrowRight, Briefcase, CheckCircle2, ClipboardList, Clock,
-  Coins, CreditCard, Hourglass, Layers, Lock, MailWarning, Play, Receipt,
+  Coins, CreditCard, Gamepad2, Hourglass, Layers, Lock, MailWarning, Play, Receipt,
   Send, Share2, TrendingUp, Users, Wallet, Trophy, Disc3, MessageSquare,
-  History, UserPlus, Search, Medal, Crown, Zap,
+  History, UserPlus, Search, Medal, Crown, X, Zap,
 } from "lucide-react";
 import { Link } from "../components/nav";
 import {
@@ -185,18 +185,22 @@ export function Dashboard() {
 
       {/* ── Hero banner ── */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0f1c2e] to-[#1a0f3e] px-5 py-6 text-white">
-        <div className="pointer-events-none absolute right-2 top-2 select-none text-[80px] opacity-10">⚡</div>
-        <div className="pointer-events-none absolute -right-4 bottom-0 select-none text-[100px] opacity-10">🔮</div>
+        <div className="pointer-events-none absolute right-2 top-2 select-none opacity-10">
+          <Zap className="h-20 w-20 text-white" />
+        </div>
+        <div className="pointer-events-none absolute -right-4 bottom-0 select-none opacity-10">
+          <Coins className="h-24 w-24 text-white" />
+        </div>
 
         <p className="text-sm text-cyan-300">Welcome back,</p>
         <h1 className="mt-0.5 text-[20px] font-black leading-tight">
-          {firstName} 👋
+          {firstName}
         </h1>
         <p className="mt-1 text-sm text-violet-200">Activate Zentra cycles and earn ZNTR rewards!</p>
 
         {/* Points pill */}
         <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#f0c040] px-4 py-2">
-          <span className="text-base">🪙</span>
+          <Coins className="h-4 w-4 text-[#7a4f00]" />
           <span className="text-sm font-black text-[#7a4f00]">{fmtN(bal.available)}</span>
         </div>
       </div>
@@ -224,13 +228,13 @@ export function Dashboard() {
           <ArrowRight className="mt-1 h-5 w-5 shrink-0 text-cyan-400" />
         </div>
         <div className="mt-4 grid grid-cols-3 gap-2">
-          {[
-            { label: "Activate", icon: "⚡", desc: "Start a cycle" },
-            { label: "Earn ZNTR", icon: "💎", desc: "Cycle rewards" },
-            { label: "Convert", icon: "💰", desc: "ZNTR → Cash" },
-          ].map((f) => (
+          {([
+            { label: "Activate", Icon: Zap, desc: "Start a cycle" },
+            { label: "Earn ZNTR", Icon: Medal, desc: "Cycle rewards" },
+            { label: "Convert", Icon: Coins, desc: "ZNTR → Cash" },
+          ] as const).map((f) => (
             <div key={f.label} className="rounded-xl bg-slate-800/60 px-3 py-3 text-center">
-              <span className="text-lg">{f.icon}</span>
+              <f.Icon className="mx-auto h-5 w-5 text-cyan-400" />
               <p className="mt-1 text-[11px] font-bold text-white">{f.label}</p>
               <p className="text-[9px] text-slate-400">{f.desc}</p>
             </div>
@@ -552,7 +556,7 @@ export function GamesPage() {
           className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-4 text-sm outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500"
         />
         {search && (
-          <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">✕</button>
+          <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"><X className="h-4 w-4" /></button>
         )}
       </div>
 
@@ -694,7 +698,10 @@ export function LeaderboardPage() {
               tab === t ? "bg-white shadow text-slate-900" : "text-slate-500 hover:text-slate-700"
             }`}
           >
-            {t === "feud" ? "🎮 Family Feud" : "🏆 Overall Earnings"}
+            <span className="flex items-center justify-center gap-1.5">
+              {t === "feud" ? <Gamepad2 className="h-3.5 w-3.5" /> : <Trophy className="h-3.5 w-3.5" />}
+              {t === "feud" ? "Family Feud" : "Overall Earnings"}
+            </span>
           </button>
         ))}
       </div>

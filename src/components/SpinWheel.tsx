@@ -279,10 +279,10 @@ export default function SpinWheel({ segments, spinning, winningIndex, onSpin, di
             {isWin && <PartyPopper className="h-4 w-4 flex-shrink-0" />}
             {winner.type === "cash" && winner.amount > 0
               ? isJackpot
-                ? `🎉 JACKPOT! You won ${fmtN(winner.amount)}!`
+                ? `JACKPOT! You won ${fmtN(winner.amount)}!`
                 : `You won ${fmtN(winner.amount)}!`
               : winner.type === "bonus_task"
-              ? "✨ Bonus task unlocked"
+              ? "Bonus task unlocked"
               : isLose
               ? "Better luck next time!"
               : "No reward — try again tomorrow"}

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Disc3, Hourglass, Timer, Trophy } from "lucide-react";
+import { Disc3, Hourglass, Medal, Timer, Trophy } from "lucide-react";
 import SpinWheel from "../components/SpinWheel";
 import { StatusBadge, fmtDateTime, fmtN } from "../components/ui";
 import {
@@ -146,9 +146,14 @@ export function SpinPage() {
             {winners.slice(0, 6).map((w, i) => (
               <div key={i} className="flex items-center justify-between px-5 py-3">
                 <div className="flex items-center gap-3">
-                  {/* Medal without circular background */}
-                  <span className="text-base leading-none">
-                    {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : (
+                  <span className="flex h-6 w-6 items-center justify-center">
+                    {i === 0 ? (
+                      <Medal className="h-5 w-5 text-amber-500" />
+                    ) : i === 1 ? (
+                      <Medal className="h-5 w-5 text-slate-400" />
+                    ) : i === 2 ? (
+                      <Medal className="h-5 w-5 text-amber-700" />
+                    ) : (
                       <span className="text-xs font-semibold text-slate-400">{i + 1}</span>
                     )}
                   </span>

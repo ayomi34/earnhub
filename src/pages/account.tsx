@@ -129,7 +129,7 @@ function WithdrawModal({ open, onClose }: { open: boolean; onClose: () => void }
         </div>
       ) : (
         <div className="mb-4 flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-xs font-medium text-green-800">
-          <span className="flex h-4 w-4 items-center justify-center rounded-full bg-green-500 text-white text-[10px]">✓</span>
+          <span className="flex h-4 w-4 items-center justify-center rounded-full bg-green-500 text-white"><Check className="h-2.5 w-2.5" /></span>
           Referral requirement met — {referralStats.active} active referral{referralStats.active !== 1 ? "s" : ""}
         </div>
       )}

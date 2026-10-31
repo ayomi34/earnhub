@@ -11,6 +11,7 @@ import {
   Play,
   Award,
   Users,
+  X,
 } from "lucide-react";
 import { Badge, Button, fmtN, fmtDateTime } from "../components/ui";
 import {
@@ -90,7 +91,7 @@ function AnswerBoard({
       {state === "hit" && points !== undefined && points > 0 && (
         <span className="rounded-md bg-green-500 px-2 py-0.5 text-xs font-bold text-white">+{points}</span>
       )}
-      {state === "miss" && <span className="font-bold text-red-300">✕</span>}
+      {state === "miss" && <X className="h-4 w-4 text-red-300" />}
       {state === "idle" && <ChevronRight className="h-4 w-4 text-green-300" />}
     </button>
   );

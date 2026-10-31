@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  AlertCircle, CheckCircle2, Coins, Crown, Info, Medal, RefreshCw,
-  TrendingUp, Trophy, Zap,
+  AlertCircle, Check, CheckCircle2, Coins, Crown, Info, Medal, RefreshCw,
+  TrendingUp, Trophy, X, Zap,
 } from "lucide-react";
 import { useData, useUser } from "../lib/store";
 import { read } from "../lib/db";
@@ -109,7 +109,7 @@ function CycleCard({ cycle }: { cycle: GoldMineCycle }) {
       <div className="mb-3 flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
           <span className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${done ? "bg-violet-500 text-white" : cancelled ? "bg-slate-300 text-slate-600" : "bg-cyan-500 text-white"}`}>
-            {done ? "✓" : cancelled ? "✗" : <Zap className="h-4 w-4" />}
+            {done ? <Check className="h-4 w-4" /> : cancelled ? <X className="h-4 w-4" /> : <Zap className="h-4 w-4" />}
           </span>
           <div>
             <p className="text-sm font-semibold text-slate-800">
