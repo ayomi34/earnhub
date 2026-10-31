@@ -41,47 +41,47 @@ function ZentraCore({ active }: { active: boolean }) {
     <div className="relative mx-auto flex h-44 w-44 items-center justify-center select-none">
       {/* outer ring */}
       <div
-        className="absolute h-44 w-44 rounded-full border border-cyan-400/30"
+        className="absolute h-44 w-44 rounded-full border border-green-400/40"
         style={{
           animation: active ? "zentra-spin 8s linear infinite" : "none",
-          opacity: active ? 1 : 0.3,
+          opacity: active ? 1 : 0.25,
         }}
       >
-        <div className="absolute -top-1 left-1/2 h-2 w-2 -translate-x-1/2 rounded-full bg-cyan-400" />
+        <div className="absolute -top-1 left-1/2 h-2 w-2 -translate-x-1/2 rounded-full bg-green-400" />
       </div>
       {/* mid ring */}
       <div
-        className="absolute h-32 w-32 rounded-full border border-violet-400/40"
+        className="absolute h-32 w-32 rounded-full border border-emerald-400/50"
         style={{
           animation: active ? "zentra-spin-rev 5s linear infinite" : "none",
-          opacity: active ? 1 : 0.3,
+          opacity: active ? 1 : 0.25,
         }}
       >
-        <div className="absolute -top-1 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-violet-400" />
+        <div className="absolute -top-1 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-emerald-400" />
       </div>
       {/* inner ring */}
       <div
-        className="absolute h-20 w-20 rounded-full border border-indigo-400/50"
+        className="absolute h-20 w-20 rounded-full border border-green-500/60"
         style={{
           animation: active ? "zentra-spin 3s linear infinite" : "none",
-          opacity: active ? 1 : 0.3,
+          opacity: active ? 1 : 0.25,
         }}
       >
-        <div className="absolute -top-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-indigo-400" />
+        <div className="absolute -top-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-green-500" />
       </div>
       {/* core */}
       <div
         className={`relative z-10 flex h-14 w-14 items-center justify-center rounded-full transition-all duration-700 ${
           active
-            ? "bg-gradient-to-br from-cyan-400 to-violet-500 shadow-[0_0_24px_rgba(139,92,246,0.6)]"
-            : "bg-slate-700 shadow-none"
+            ? "bg-gradient-to-br from-green-500 to-emerald-600 shadow-[0_0_24px_rgba(34,197,94,0.45)]"
+            : "bg-slate-200 shadow-none"
         }`}
         style={{ animation: active ? "zentra-pulse 2s ease-in-out infinite" : "none" }}
       >
-        <Zap className={`h-6 w-6 ${active ? "text-white" : "text-slate-500"}`} />
+        <Zap className={`h-6 w-6 ${active ? "text-white" : "text-slate-400"}`} />
       </div>
       {active && (
-        <div className="absolute h-14 w-14 rounded-full bg-violet-500/20 blur-xl" />
+        <div className="absolute h-14 w-14 rounded-full bg-green-500/20 blur-xl" />
       )}
     </div>
   );
@@ -105,10 +105,10 @@ function CycleCard({ cycle }: { cycle: GoldMineCycle }) {
   const cancelled = cycle.status === "cancelled";
 
   return (
-    <div className={`rounded-xl border p-4 ${done ? "border-violet-200 bg-violet-50" : cancelled ? "border-slate-200 bg-slate-50" : "border-cyan-200 bg-cyan-50"}`}>
+    <div className={`rounded-xl border p-4 ${done ? "border-green-200 bg-green-50" : cancelled ? "border-slate-200 bg-slate-50" : "border-emerald-200 bg-emerald-50"}`}>
       <div className="mb-3 flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
-          <span className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${done ? "bg-violet-500 text-white" : cancelled ? "bg-slate-300 text-slate-600" : "bg-cyan-500 text-white"}`}>
+          <span className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${done ? "bg-green-600 text-white" : cancelled ? "bg-slate-300 text-slate-600" : "bg-emerald-500 text-white"}`}>
             {done ? <Check className="h-4 w-4" /> : cancelled ? <X className="h-4 w-4" /> : <Zap className="h-4 w-4" />}
           </span>
           <div>
@@ -121,7 +121,7 @@ function CycleCard({ cycle }: { cycle: GoldMineCycle }) {
           </div>
         </div>
         <div className="text-right">
-          <p className="flex items-center gap-1 text-sm font-bold text-violet-600">
+          <p className="flex items-center gap-1 text-sm font-bold text-green-700">
             <Coins className="h-3.5 w-3.5" />
             {cycle.goldReward} ZNTR
           </p>
@@ -137,9 +137,9 @@ function CycleCard({ cycle }: { cycle: GoldMineCycle }) {
             <span>{timeLeft(cycle.endsAt)}</span>
             <span>{pct}%</span>
           </div>
-          <div className="h-2 overflow-hidden rounded-full bg-cyan-100">
+          <div className="h-2 overflow-hidden rounded-full bg-emerald-100">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-violet-500 transition-all"
+              className="h-full rounded-full bg-gradient-to-r from-green-500 to-emerald-600 transition-all"
               style={{ width: `${pct}%` }}
             />
           </div>
@@ -150,7 +150,7 @@ function CycleCard({ cycle }: { cycle: GoldMineCycle }) {
       )}
 
       {done && (
-        <p className="mt-1 text-xs text-violet-700">
+        <p className="mt-1 text-xs text-green-800">
           {cycle.goldCredited ? `${cycle.goldReward} ZNTR credited to your balance` : "Cycle ended — processing..."}
         </p>
       )}
@@ -286,7 +286,7 @@ function ZentraLeaderboard({ currentUserId }: { currentUserId: string }) {
                 key={r.userId}
                 className={`flex items-center gap-3 rounded-xl border px-4 py-3 ${
                   r.userId === currentUserId
-                    ? "border-cyan-300 bg-cyan-50"
+                    ? "border-green-200 bg-green-50"
                     : i < 3
                     ? ["border-yellow-200 bg-yellow-50", "border-slate-200 bg-slate-50", "border-amber-200 bg-amber-50"][i]
                     : "border-slate-100 bg-white"
@@ -300,7 +300,7 @@ function ZentraLeaderboard({ currentUserId }: { currentUserId: string }) {
                   )}
                 </div>
                 <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
-                  r.userId === currentUserId ? "bg-cyan-500 text-white" :
+                  r.userId === currentUserId ? "bg-green-600 text-white" :
                   i === 0 ? "bg-yellow-100 text-yellow-700" :
                   i === 1 ? "bg-slate-200 text-slate-600" :
                   i === 2 ? "bg-amber-100 text-amber-700" :
@@ -311,11 +311,11 @@ function ZentraLeaderboard({ currentUserId }: { currentUserId: string }) {
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold text-slate-800">
                     {r.displayName}
-                    {r.userId === currentUserId && <span className="ml-1.5 text-[10px] font-bold text-cyan-600">(You)</span>}
+                    {r.userId === currentUserId && <span className="ml-1.5 text-[10px] font-bold text-green-700">(You)</span>}
                   </p>
                   <p className="text-[11px] text-slate-400">{r.completedCycles} cycle{r.completedCycles !== 1 ? "s" : ""} completed</p>
                 </div>
-                <div className="flex items-center gap-1 text-sm font-bold text-violet-600">
+                <div className="flex items-center gap-1 text-sm font-bold text-green-700">
                   <Coins className="h-3.5 w-3.5" />
                   {r.totalZntr}
                 </div>
@@ -326,7 +326,7 @@ function ZentraLeaderboard({ currentUserId }: { currentUserId: string }) {
           {/* my rank callout if not in top 50 */}
           {myRow && (
             <p className="text-center text-xs text-slate-400">
-              Your rank: <strong className="text-cyan-600">#{myRow.rank}</strong> · {myRow.totalZntr} ZNTR earned
+              Your rank: <strong className="text-green-700">#{myRow.rank}</strong> · {myRow.totalZntr} ZNTR earned
             </p>
           )}
           {!myRow && (
@@ -436,7 +436,7 @@ export function GoldMinePage() {
       <style>{`
         @keyframes zentra-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes zentra-spin-rev { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
-        @keyframes zentra-pulse { 0%,100% { box-shadow: 0 0 16px rgba(139,92,246,0.5); } 50% { box-shadow: 0 0 32px rgba(139,92,246,0.85); } }
+        @keyframes zentra-pulse { 0%,100% { box-shadow: 0 0 16px rgba(34,197,94,0.4); } 50% { box-shadow: 0 0 32px rgba(34,197,94,0.7); } }
       `}</style>
 
       <div className="space-y-6 pb-8">
@@ -463,10 +463,10 @@ export function GoldMinePage() {
         )}
 
         {/* Animated core + primary action */}
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-center">
+        <div className="rounded-2xl border border-green-200 bg-white p-6 text-center shadow-sm">
           <ZentraCore active={activeCycles.length > 0} />
 
-          <p className={`mt-3 text-sm font-semibold ${activeCycles.length > 0 ? "text-cyan-400" : "text-slate-400"}`}>
+          <p className={`mt-3 text-sm font-semibold ${activeCycles.length > 0 ? "text-green-700" : "text-slate-400"}`}>
             {activeCycles.length > 0
               ? `${activeCycles.length} cycle${activeCycles.length > 1 ? "s" : ""} running`
               : "No active cycles"}
@@ -475,7 +475,7 @@ export function GoldMinePage() {
           {levelCfg ? (
             <div className="mt-4">
               <Button
-                className="w-full max-w-xs !bg-gradient-to-r !from-cyan-500 !to-violet-600 !text-white hover:opacity-90"
+                className="w-full max-w-xs"
                 onClick={handleJoin}
                 disabled={loading || activeCycles.length >= levelCfg.maxActiveCycles}
               >
@@ -498,10 +498,9 @@ export function GoldMinePage() {
             </div>
           ) : (
             <div className="mt-4">
-              <p className="text-xs text-slate-400 mb-3">Membership required to activate Zentra cycles</p>
+              <p className="text-xs text-slate-500 mb-3">Membership required to activate Zentra cycles</p>
               <Button
                 variant="outline"
-                className="!border-slate-600 !text-slate-300 hover:!bg-slate-800"
                 onClick={() => { window.location.hash = "#/app/membership"; }}
               >
                 View Membership Plans
@@ -512,18 +511,18 @@ export function GoldMinePage() {
 
         {/* Stats row */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <div className="rounded-xl border border-violet-200 bg-violet-50 p-4">
-            <p className="text-xs font-medium text-violet-600">ZNTR Balance</p>
-            <p className="mt-1 flex items-center gap-1 text-2xl font-bold text-violet-700">
+          <div className="rounded-xl border border-green-200 bg-green-50 p-4">
+            <p className="text-xs font-medium text-green-700">ZNTR Balance</p>
+            <p className="mt-1 flex items-center gap-1 text-2xl font-bold text-green-800">
               <Coins className="h-5 w-5" />
               {goldBalance}
             </p>
-            <p className="mt-0.5 text-[11px] text-violet-400">≈ {fmtN(netCash)} after fee</p>
+            <p className="mt-0.5 text-[11px] text-green-600">≈ {fmtN(netCash)} after fee</p>
           </div>
-          <div className="rounded-xl border border-cyan-200 bg-cyan-50 p-4">
-            <p className="text-xs font-medium text-cyan-600">Active Cycles</p>
-            <p className="mt-1 text-2xl font-bold text-cyan-700">{activeCycles.length}</p>
-            <p className="mt-0.5 text-[11px] text-cyan-500">
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+            <p className="text-xs font-medium text-emerald-700">Active Cycles</p>
+            <p className="mt-1 text-2xl font-bold text-emerald-800">{activeCycles.length}</p>
+            <p className="mt-0.5 text-[11px] text-emerald-600">
               {levelCfg ? `Max ${levelCfg.maxActiveCycles}` : "No active membership"}
             </p>
           </div>
@@ -546,7 +545,7 @@ export function GoldMinePage() {
                 <p className="text-sm font-semibold text-slate-800">Your Cycle Plan</p>
                 <p className="mt-0.5 text-xs text-slate-500">Based on your active membership level</p>
               </div>
-              <div className="flex items-center gap-1 rounded-full bg-violet-100 px-3 py-1 text-xs font-semibold text-violet-700">
+              <div className="flex items-center gap-1 rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-800">
                 <Coins className="h-3.5 w-3.5" />
                 {levelCfg.goldReward} ZNTR / cycle
               </div>
@@ -572,11 +571,11 @@ export function GoldMinePage() {
 
         {/* Convert ZNTR section */}
         {goldBalance >= cfg.minConversionGold && (
-          <div className="rounded-xl border border-violet-200 bg-gradient-to-r from-violet-50 to-cyan-50 p-5">
+          <div className="rounded-xl border border-green-200 bg-green-50 p-5">
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="flex items-center gap-2 text-sm font-semibold text-slate-800">
-                  <TrendingUp className="h-4 w-4 text-violet-600" />
+                  <TrendingUp className="h-4 w-4 text-green-700" />
                   Convert ZNTR to Cash
                 </p>
                 <p className="mt-1 text-xs text-slate-500">
@@ -662,12 +661,12 @@ export function GoldMinePage() {
           title="Convert ZNTR to Cash"
         >
           <div className="space-y-4">
-            <div className="rounded-lg bg-violet-50 px-4 py-3">
-              <p className="text-xs text-violet-600">Available ZNTR balance</p>
-              <p className="flex items-center gap-1 text-lg font-bold text-violet-700">
+            <div className="rounded-lg bg-green-50 px-4 py-3">
+              <p className="text-xs text-green-700">Available ZNTR balance</p>
+              <p className="flex items-center gap-1 text-lg font-bold text-green-800">
                 <Coins className="h-4 w-4" /> {goldBalance} ZNTR
               </p>
-              <p className="text-[11px] text-violet-500">Rate: {fmtN(cfg.goldToCashRate)}/ZNTR · {cfg.conversionFeePercent}% fee</p>
+              <p className="text-[11px] text-green-700">Rate: {fmtN(cfg.goldToCashRate)}/ZNTR · {cfg.conversionFeePercent}% fee</p>
             </div>
 
             <div>
@@ -726,8 +725,8 @@ export function ZentraLeaderboardPage() {
   return (
     <div className="space-y-4 pb-8">
       <div className="flex items-center gap-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-violet-100">
-          <Trophy className="h-5 w-5 text-violet-500" />
+        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-green-100">
+          <Trophy className="h-5 w-5 text-green-700" />
         </div>
         <div>
           <h1 className="text-xl font-bold text-slate-900">Zentra Leaderboard</h1>

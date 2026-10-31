@@ -27,24 +27,24 @@ function ZentraMiniCore({ active }: { active: boolean }) {
   return (
     <div className="relative flex h-16 w-16 shrink-0 items-center justify-center select-none">
       <div
-        className="absolute h-16 w-16 rounded-full border border-cyan-400/40"
+        className="absolute h-16 w-16 rounded-full border border-green-400/50"
         style={{ animation: active ? "zdash-spin 6s linear infinite" : "none", opacity: active ? 1 : 0.25 }}
       >
-        <div className="absolute -top-1 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-cyan-400" />
+        <div className="absolute -top-1 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full bg-green-400" />
       </div>
       <div
-        className="absolute h-10 w-10 rounded-full border border-violet-400/40"
+        className="absolute h-10 w-10 rounded-full border border-emerald-400/50"
         style={{ animation: active ? "zdash-spin-rev 4s linear infinite" : "none", opacity: active ? 1 : 0.25 }}
       >
-        <div className="absolute -top-0.5 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-violet-400" />
+        <div className="absolute -top-0.5 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-emerald-400" />
       </div>
       <div
         className={`relative z-10 flex h-8 w-8 items-center justify-center rounded-full ${
-          active ? "bg-gradient-to-br from-cyan-400 to-violet-500 shadow-[0_0_12px_rgba(139,92,246,0.5)]" : "bg-slate-700"
+          active ? "bg-gradient-to-br from-green-500 to-emerald-600 shadow-[0_0_12px_rgba(34,197,94,0.45)]" : "bg-slate-200"
         }`}
         style={{ animation: active ? "zdash-pulse 2s ease-in-out infinite" : "none" }}
       >
-        <Zap className={`h-4 w-4 ${active ? "text-white" : "text-slate-500"}`} />
+        <Zap className={`h-4 w-4 ${active ? "text-white" : "text-slate-400"}`} />
       </div>
     </div>
   );
@@ -109,43 +109,43 @@ function ZentraDashCard() {
       <style>{`
         @keyframes zdash-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes zdash-spin-rev { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
-        @keyframes zdash-pulse { 0%,100% { box-shadow: 0 0 10px rgba(139,92,246,0.4); } 50% { box-shadow: 0 0 20px rgba(139,92,246,0.75); } }
+        @keyframes zdash-pulse { 0%,100% { box-shadow: 0 0 10px rgba(34,197,94,0.35); } 50% { box-shadow: 0 0 20px rgba(34,197,94,0.65); } }
       `}</style>
       <div
         onClick={() => navigate("/app/goldmine")}
-        className="cursor-pointer overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 p-4 transition-all active:scale-[0.98]"
+        className="cursor-pointer overflow-hidden rounded-2xl border border-green-200 bg-white p-4 shadow-sm transition-all active:scale-[0.98]"
       >
         <div className="flex items-center gap-4">
           <ZentraMiniCore active={activeCycles.length > 0} />
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-base font-bold text-white">Zentra</p>
-              <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${activeCycles.length > 0 ? "bg-cyan-500/20 text-cyan-400" : "bg-slate-700 text-slate-400"}`}>
+              <p className="text-base font-bold text-slate-900">Zentra</p>
+              <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${activeCycles.length > 0 ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-500"}`}>
                 {activeCycles.length > 0 ? "RUNNING" : "IDLE"}
               </span>
             </div>
             {activeC ? (
               <>
-                <p className="mt-0.5 text-xs text-slate-400">{timeLabel} remaining</p>
-                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-700">
+                <p className="mt-0.5 text-xs text-slate-500">{timeLabel} remaining</p>
+                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
                   <div
-                    className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-violet-500 transition-all"
+                    className="h-full rounded-full bg-gradient-to-r from-green-400 to-emerald-500 transition-all"
                     style={{ width: `${progressPct}%` }}
                   />
                 </div>
                 <div className="mt-1.5 flex items-center justify-between">
-                  <p className="text-[10px] text-slate-500">{progressPct}% complete</p>
-                  <p className="flex items-center gap-0.5 text-[10px] font-semibold text-violet-400">
+                  <p className="text-[10px] text-slate-400">{progressPct}% complete</p>
+                  <p className="flex items-center gap-0.5 text-[10px] font-semibold text-green-700">
                     <Coins className="h-3 w-3" /> {activeC.goldReward} ZNTR
                   </p>
                 </div>
               </>
             ) : (
               <>
-                <p className="mt-0.5 text-xs text-slate-400">
+                <p className="mt-0.5 text-xs text-slate-500">
                   {goldBalance > 0 ? `${goldBalance} ZNTR ready to convert` : levelCfg ? "Ready to activate" : "Membership needed"}
                 </p>
-                <p className="mt-1.5 text-[10px] text-slate-500">
+                <p className="mt-1.5 text-[10px] text-slate-400">
                   {levelCfg
                     ? `${levelCfg.cycleDays}-day cycle · ${levelCfg.goldReward} ZNTR reward`
                     : "Upgrade membership to unlock"}
@@ -184,7 +184,7 @@ export function Dashboard() {
       )}
 
       {/* ── Hero banner ── */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#0f1c2e] to-[#1a0f3e] px-5 py-6 text-white">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1a4d2e] to-[#0f3b22] px-5 py-6 text-white">
         <div className="pointer-events-none absolute right-2 top-2 select-none opacity-10">
           <Zap className="h-20 w-20 text-white" />
         </div>
@@ -192,11 +192,11 @@ export function Dashboard() {
           <Coins className="h-24 w-24 text-white" />
         </div>
 
-        <p className="text-sm text-cyan-300">Welcome back,</p>
+        <p className="text-sm text-green-200">Welcome back,</p>
         <h1 className="mt-0.5 text-[20px] font-black leading-tight">
           {firstName}
         </h1>
-        <p className="mt-1 text-sm text-violet-200">Activate Zentra cycles and earn ZNTR rewards!</p>
+        <p className="mt-1 text-sm text-green-100/80">Activate Zentra cycles and earn ZNTR rewards!</p>
 
         {/* Points pill */}
         <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#f0c040] px-4 py-2">
@@ -211,21 +211,21 @@ export function Dashboard() {
       {/* ── Zentra feature highlight ── */}
       <div
         onClick={() => navigate("/app/goldmine")}
-        className="cursor-pointer overflow-hidden rounded-2xl border border-cyan-900/40 bg-gradient-to-br from-slate-900 to-[#0d1a2e] p-5 transition-all active:scale-[0.98]"
+        className="cursor-pointer overflow-hidden rounded-2xl border border-green-200 bg-white p-5 shadow-sm transition-all active:scale-[0.98]"
       >
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-cyan-500/20">
-                <Zap className="h-4 w-4 text-cyan-400" />
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-green-100">
+                <Zap className="h-4 w-4 text-green-700" />
               </span>
-              <p className="font-bold text-white">Zentra Mining</p>
+              <p className="font-bold text-slate-900">Zentra Mining</p>
             </div>
-            <p className="mt-2 text-sm text-slate-300 leading-relaxed">
+            <p className="mt-2 text-sm text-slate-500 leading-relaxed">
               Activate mining cycles and earn ZNTR. Convert your ZNTR balance to cash at any time.
             </p>
           </div>
-          <ArrowRight className="mt-1 h-5 w-5 shrink-0 text-cyan-400" />
+          <ArrowRight className="mt-1 h-5 w-5 shrink-0 text-green-600" />
         </div>
         <div className="mt-4 grid grid-cols-3 gap-2">
           {([
@@ -233,10 +233,10 @@ export function Dashboard() {
             { label: "Earn ZNTR", Icon: Medal, desc: "Cycle rewards" },
             { label: "Convert", Icon: Coins, desc: "ZNTR → Cash" },
           ] as const).map((f) => (
-            <div key={f.label} className="rounded-xl bg-slate-800/60 px-3 py-3 text-center">
-              <f.Icon className="mx-auto h-5 w-5 text-cyan-400" />
-              <p className="mt-1 text-[11px] font-bold text-white">{f.label}</p>
-              <p className="text-[9px] text-slate-400">{f.desc}</p>
+            <div key={f.label} className="rounded-xl bg-green-50 px-3 py-3 text-center">
+              <f.Icon className="mx-auto h-5 w-5 text-green-700" />
+              <p className="mt-1 text-[11px] font-bold text-slate-800">{f.label}</p>
+              <p className="text-[9px] text-slate-500">{f.desc}</p>
             </div>
           ))}
         </div>
