@@ -41,7 +41,11 @@ export default function App() {
       if (!session?.user?.email_confirmed_at) return;
       void hydrateAll().then(() => {
         const currentPath = window.location.hash.replace(/^#/, "").split("?")[0] || "/";
-        if (["/", "/login", "/register", "/verify", "/reset"].includes(currentPath)) navigate("/app");
+        // Redirect from auth pages, landing, and OAuth callback fragments
+        // (fragments that look like "access_token=…" don't start with /app or /admin)
+        if (!currentPath.startsWith("/app") && !currentPath.startsWith("/admin")) {
+          navigate("/app");
+        }
       });
     };
 

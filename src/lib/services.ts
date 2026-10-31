@@ -769,7 +769,7 @@ export async function register(input: {
     email,
     password: input.password,
     options: {
-      emailRedirectTo: `${window.location.origin}/`,
+      emailRedirectTo: `${window.location.origin}/#/verify`,
       data: {
         full_name: input.fullName.trim(),
         phone: input.phone.trim(),
@@ -794,7 +794,14 @@ export async function login(email: string, password: string) {
     email: email.trim().toLowerCase(),
     password,
   });
-  if (error) throw new SvcError(friendlyAuthError(error.message));
+  if (error) {
+    const msg = error.message.toLowerCase();
+    if (msg.includes("email not confirmed")) {
+      // Signal the caller so they can show the in-page resend flow.
+      throw new SvcError("__EMAIL_NOT_CONFIRMED__");
+    }
+    throw new SvcError(friendlyAuthError(error.message));
+  }
 
   await hydrateAll();
   const user = getSessionUser();
@@ -803,6 +810,31 @@ export async function login(email: string, password: string) {
     throw new SvcError("This account has been suspended. Contact support for help.");
   }
   return user;
+}
+
+/** Initiates a Google OAuth sign-in redirect.  The browser leaves the page;
+ *  on return the Supabase client picks up the session from the URL fragment
+ *  and the App-level onAuthStateChange listener hydrates the store. */
+export async function loginWithGoogle() {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: window.location.origin + "/",
+      queryParams: { access_type: "offline", prompt: "select_account" },
+    },
+  });
+  if (error) throw new SvcError("Google sign-in is unavailable right now. Please use email and password.");
+}
+
+/** Resend a confirmation email for a user who is NOT currently signed in
+ *  (e.g. they registered, got the error after logout, and returned). */
+export async function resendConfirmationByEmail(email: string) {
+  const { error } = await supabase.auth.resend({
+    type: "signup",
+    email: email.trim().toLowerCase(),
+  });
+  if (error) throw new SvcError(friendlyAuthError(error.message));
+  return "sent";
 }
 
 export async function logout() {
