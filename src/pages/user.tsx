@@ -464,19 +464,69 @@ export { getLevel as _levelRef };
 
 /* ================= GAMES PAGE ================= */
 
-// Game thumbnail component — renders a photo where available, SVG fallback otherwise
 function GameThumb({ src, alt, className = "" }: { src: string; alt: string; className?: string }) {
   return <img src={src} alt={alt} className={`h-full w-full object-cover ${className}`} />;
 }
 
-function TriviaThumb() {
+/** Premium SVG illustration for the Zentra mining card */
+function ZentraThumb() {
   return (
     <svg viewBox="0 0 80 80" className="h-full w-full" xmlns="http://www.w3.org/2000/svg">
-      <rect width="80" height="80" fill="#1a2e6b" />
-      <circle cx="40" cy="38" r="24" fill="#f1c40f" />
-      <ellipse cx="40" cy="58" rx="10" ry="4" fill="#e6a800" />
-      <rect x="36" y="56" width="8" height="10" rx="2" fill="#e6a800" />
-      <text x="40" y="44" textAnchor="middle" fill="#1a2e6b" fontSize="22" fontWeight="bold" fontFamily="sans-serif">?</text>
+      {/* Deep space background */}
+      <defs>
+        <linearGradient id="zt-bg" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#0a0f1e" />
+          <stop offset="100%" stopColor="#0e1a0a" />
+        </linearGradient>
+        <linearGradient id="zt-gold" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#f5e08a" />
+          <stop offset="100%" stopColor="#b8860b" />
+        </linearGradient>
+        <linearGradient id="zt-ore" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#d4af37" />
+          <stop offset="100%" stopColor="#7a5c0e" />
+        </linearGradient>
+      </defs>
+      <rect width="80" height="80" fill="url(#zt-bg)" />
+
+      {/* Circuit grid lines */}
+      <line x1="10" y1="20" x2="70" y2="20" stroke="#1a3a1a" strokeWidth="0.5" />
+      <line x1="10" y1="40" x2="70" y2="40" stroke="#1a3a1a" strokeWidth="0.5" />
+      <line x1="10" y1="60" x2="70" y2="60" stroke="#1a3a1a" strokeWidth="0.5" />
+      <line x1="20" y1="10" x2="20" y2="70" stroke="#1a3a1a" strokeWidth="0.5" />
+      <line x1="40" y1="10" x2="40" y2="70" stroke="#1a3a1a" strokeWidth="0.5" />
+      <line x1="60" y1="10" x2="60" y2="70" stroke="#1a3a1a" strokeWidth="0.5" />
+
+      {/* Hexagonal ore crystal */}
+      <polygon points="40,14 52,21 52,35 40,42 28,35 28,21"
+        fill="url(#zt-ore)" stroke="#f5e08a" strokeWidth="0.8" opacity="0.9" />
+      <polygon points="40,18 49,23 49,33 40,38 31,33 31,23"
+        fill="none" stroke="rgba(255,248,200,0.4)" strokeWidth="0.5" />
+      {/* Inner gem facet */}
+      <line x1="40" y1="14" x2="40" y2="42" stroke="rgba(255,248,200,0.3)" strokeWidth="0.5" />
+      <line x1="28" y1="21" x2="52" y2="35" stroke="rgba(255,248,200,0.3)" strokeWidth="0.5" />
+      <line x1="52" y1="21" x2="28" y2="35" stroke="rgba(255,248,200,0.3)" strokeWidth="0.5" />
+      {/* Glint */}
+      <circle cx="35" cy="20" r="1.5" fill="rgba(255,255,255,0.7)" />
+
+      {/* Circuit nodes */}
+      <circle cx="20" cy="55" r="3" fill="#1a6b2e" stroke="#2ecc71" strokeWidth="0.8" />
+      <circle cx="60" cy="55" r="3" fill="#1a6b2e" stroke="#2ecc71" strokeWidth="0.8" />
+      <circle cx="40" cy="62" r="3" fill="#1a6b2e" stroke="#2ecc71" strokeWidth="0.8" />
+
+      {/* Circuit traces from crystal to nodes */}
+      <path d="M34 42 L20 52" stroke="#2ecc71" strokeWidth="0.8" fill="none" opacity="0.7" />
+      <path d="M46 42 L60 52" stroke="#2ecc71" strokeWidth="0.8" fill="none" opacity="0.7" />
+      <path d="M40 42 L40 59" stroke="#2ecc71" strokeWidth="0.8" fill="none" opacity="0.7" />
+
+      {/* Connection line between nodes */}
+      <path d="M20 55 L40 62 L60 55" stroke="#2ecc71" strokeWidth="0.6" fill="none" opacity="0.5" strokeDasharray="2 1" />
+
+      {/* Ambient glow dots */}
+      <circle cx="15" cy="15" r="1" fill="#d4af37" opacity="0.5" />
+      <circle cx="65" cy="12" r="1" fill="#d4af37" opacity="0.4" />
+      <circle cx="68" cy="68" r="1" fill="#2ecc71" opacity="0.4" />
+      <circle cx="12" cy="65" r="1" fill="#2ecc71" opacity="0.4" />
     </svg>
   );
 }
@@ -485,89 +535,69 @@ const GAME_LIST = [
   {
     to: "/app/feud",
     label: "Family Feud",
-    desc: "Guess the most popular answers!",
-    tags: [{ text: "Popular", color: "text-rose-600 bg-rose-50 border border-rose-200" }, { text: "Multiplayer", color: "text-slate-600 bg-slate-100" }],
+    desc: "Guess the most popular answers to win.",
+    tags: [{ text: "Popular", color: "text-rose-600 bg-rose-50 border border-rose-200" }, { text: "Live", color: "text-slate-500 bg-slate-100" }],
     thumb: <GameThumb src="/images/game-familyfeud.jpg" alt="Family Feud" />,
   },
   {
     to: "/app/spin",
-    label: "Spin Wheel",
-    desc: "Spin & win exciting rewards!",
-    tags: [{ text: "Luck", color: "text-purple-600 bg-purple-50 border border-purple-200" }, { text: "Instant Win", color: "text-slate-600 bg-slate-100" }],
-    thumb: <GameThumb src="/images/game-spinwheel.jpg" alt="Spin Wheel" />,
-  },
-  {
-    to: "/app/earn",
-    label: "Trivia Quiz",
-    desc: "Test your knowledge!",
-    tags: [{ text: "Single Player", color: "text-blue-600 bg-blue-50 border border-blue-200" }, { text: "Daily", color: "text-slate-600 bg-slate-100" }],
-    thumb: <TriviaThumb />,
+    label: "Spin & Win",
+    desc: "Spin the wheel for instant cash rewards.",
+    tags: [{ text: "Daily", color: "text-purple-600 bg-purple-50 border border-purple-200" }, { text: "Instant", color: "text-slate-500 bg-slate-100" }],
+    thumb: <GameThumb src="/images/game-spinwheel.jpg" alt="Spin & Win" />,
   },
   {
     to: "/app/goldmine",
-    label: "Zentra",
-    desc: "Activate cycles, earn gold!",
-    tags: [{ text: "Strategy", color: "text-green-600 bg-green-50 border border-green-200" }, { text: "Earn", color: "text-slate-600 bg-slate-100" }],
-    thumb: <GameThumb src="/images/game-goldmine.png" alt="Zentra" className="object-top" />,
-  },
-  {
-    to: "/app/feud",
-    label: "Family Challenge",
-    desc: "Team up and win big!",
-    tags: [{ text: "Multiplayer", color: "text-rose-600 bg-rose-50 border border-rose-200" }, { text: "Rewards", color: "text-purple-600 bg-purple-50 border border-purple-200" }],
-    thumb: <GameThumb src="/images/game-familyfeud.jpg" alt="Family Challenge" />,
+    label: "Zentra Mining",
+    desc: "Activate cycles, earn ZNTR, convert to cash.",
+    tags: [{ text: "Strategy", color: "text-amber-700 bg-amber-50 border border-amber-200" }, { text: "Earn", color: "text-slate-500 bg-slate-100" }],
+    thumb: <ZentraThumb />,
   },
 ];
 
-const GAME_CATS = ["All", "Family Feud", "Spin & Win", "Quiz", "Earn"];
+const GAME_CATS = ["All", "Family Feud", "Spin & Win", "Zentra"];
 
 export function GamesPage() {
   const [search, setSearch] = useState("");
   const [cat, setCat] = useState("All");
 
   const filtered = GAME_LIST.filter((g) => {
-    const matchSearch = g.label.toLowerCase().includes(search.toLowerCase()) || g.desc.toLowerCase().includes(search.toLowerCase());
+    const q = search.toLowerCase();
+    const matchSearch = !q || g.label.toLowerCase().includes(q) || g.desc.toLowerCase().includes(q);
     const matchCat = cat === "All"
-      || (cat === "Family Feud" && g.label.toLowerCase().includes("feud"))
-      || (cat === "Spin & Win" && g.label.toLowerCase().includes("spin"))
-      || (cat === "Quiz" && g.label.toLowerCase().includes("quiz"))
-      || (cat === "Earn" && g.tags.some((t) => t.text === "Earn" || t.text === "Strategy"));
+      || (cat === "Family Feud" && g.to === "/app/feud")
+      || (cat === "Spin & Win" && g.to === "/app/spin")
+      || (cat === "Zentra" && g.to === "/app/goldmine");
     return matchSearch && matchCat;
   });
 
   return (
-    <div className="space-y-4">
-      {/* header */}
-      <div className="flex items-center gap-3">
-        <button onClick={() => window.history.back()} className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200">
-          <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4"><path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
-        </button>
-        <h1 className="text-xl font-bold text-slate-900">Games</h1>
-      </div>
-
+    <div className="space-y-3">
       {/* search */}
       <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
         <input
           type="text"
-          placeholder="Search games..."
+          placeholder="Search games…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-4 text-sm outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500"
+          className="w-full rounded-xl border border-slate-200 bg-white py-2 pl-8 pr-4 text-sm outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500"
         />
         {search && (
-          <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"><X className="h-4 w-4" /></button>
+          <button onClick={() => setSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+            <X className="h-3.5 w-3.5" />
+          </button>
         )}
       </div>
 
-      {/* category tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+      {/* category pills */}
+      <div className="flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {GAME_CATS.map((c) => (
           <button
             key={c}
             onClick={() => setCat(c)}
-            className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
-              cat === c ? "bg-[#1a4d2e] text-white" : "border border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+            className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+              cat === c ? "bg-[#1a4d2e] text-white" : "border border-slate-200 bg-white text-slate-500 hover:border-slate-300"
             }`}
           >
             {c}
@@ -575,45 +605,42 @@ export function GamesPage() {
         ))}
       </div>
 
-      {/* game list */}
-      <div className="space-y-3">
+      {/* game cards */}
+      <div className="space-y-2.5">
         {filtered.length === 0 ? (
           <div className="rounded-2xl border border-slate-100 bg-white p-8 text-center">
-            <p className="text-sm text-slate-500">No games match your search.</p>
+            <p className="text-sm text-slate-400">No games match your search.</p>
           </div>
         ) : (
           filtered.map((g) => (
             <div
               key={g.label}
-              className="flex items-center gap-4 rounded-2xl border border-slate-100 bg-white p-3 shadow-sm transition-all active:scale-[0.99]"
+              className="flex items-center gap-3 rounded-xl border border-slate-100 bg-white p-2.5 shadow-sm transition-all active:scale-[0.99]"
             >
               {/* thumbnail */}
-              <div className="h-[72px] w-[72px] shrink-0 overflow-hidden rounded-xl shadow-sm">
+              <div className="h-[60px] w-[60px] shrink-0 overflow-hidden rounded-lg">
                 {g.thumb}
               </div>
+
               {/* info */}
               <div className="min-w-0 flex-1">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="font-bold text-slate-900">{g.label}</p>
-                    <p className="mt-0.5 text-xs text-slate-500">{g.desc}</p>
-                    <div className="mt-1.5 flex flex-wrap gap-1.5">
-                      {g.tags.map((t) => (
-                        <span key={t.text} className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${t.color}`}>
-                          {t.text}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" className="mt-1 h-4 w-4 shrink-0 text-slate-300" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+                <p className="text-sm font-semibold leading-tight text-slate-900">{g.label}</p>
+                <p className="mt-0.5 text-[11px] leading-snug text-slate-500">{g.desc}</p>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {g.tags.map((t) => (
+                    <span key={t.text} className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${t.color}`}>
+                      {t.text}
+                    </span>
+                  ))}
                 </div>
               </div>
+
               {/* play button */}
               <button
                 onClick={() => navigate(g.to)}
-                className="shrink-0 rounded-full bg-green-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition-colors hover:bg-green-700 active:scale-95"
+                className="shrink-0 rounded-full bg-green-600 px-3 py-1.5 text-[11px] font-bold text-white transition-colors hover:bg-green-700 active:scale-95"
               >
-                Play Now
+                Play
               </button>
             </div>
           ))
