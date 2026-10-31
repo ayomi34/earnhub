@@ -287,11 +287,6 @@ export function Login() {
       title="Welcome back"
       sub="Sign in to continue your earning journey."
     >
-      {/* Google OAuth */}
-      <GoogleButton loading={googleBusy} onClick={handleGoogle} />
-
-      <OAuthDivider />
-
       <form onSubmit={submit} className="space-y-4">
         <Field label="Email address">
           <Input
@@ -327,6 +322,11 @@ export function Login() {
           Sign In
         </Button>
       </form>
+
+      {/* Google OAuth */}
+      <OAuthDivider />
+
+      <GoogleButton loading={googleBusy} onClick={handleGoogle} />
 
       {/* Inline unverified-email nudge */}
       {unverifiedEmail && (
@@ -439,31 +439,6 @@ export function Register() {
                   Fill in your details to get started.
                 </p>
 
-                {/* Google OAuth — quick registration; user still needs
-                    email verification, but Google accounts are pre-verified. */}
-                <div className="mt-5">
-                  <GoogleButton
-                    loading={googleSignupBusy}
-                    onClick={async () => {
-                      if (!refCode.trim()) {
-                        setErrors({ ...errors, referralCode: "Enter your referral code before continuing with Google" });
-                        return;
-                      }
-                      setGoogleSignupBusy(true);
-                      try {
-                        // Store ref code in sessionStorage so it's available after redirect
-                        try { sessionStorage.setItem("eh_ref", refCode.trim().toUpperCase()); } catch { /* ignore */ }
-                        await loginWithGoogle();
-                      } catch (err) {
-                        toast("error", err instanceof Error ? err.message : "Google sign-in failed.");
-                        setGoogleSignupBusy(false);
-                      }
-                    }}
-                  />
-                </div>
-
-                <OAuthDivider />
-
                 <div className="space-y-4">
                   <Field label="Full name" error={errors.fullName}>
                     <Input
@@ -530,6 +505,27 @@ export function Register() {
                     Continue <ArrowRight className="h-4 w-4" />
                   </Button>
                 </div>
+
+                {/* Google OAuth — quick registration */}
+                <OAuthDivider />
+
+                <GoogleButton
+                  loading={googleSignupBusy}
+                  onClick={async () => {
+                    if (!refCode.trim()) {
+                      setErrors({ ...errors, referralCode: "Enter your referral code before continuing with Google" });
+                      return;
+                    }
+                    setGoogleSignupBusy(true);
+                    try {
+                      try { sessionStorage.setItem("eh_ref", refCode.trim().toUpperCase()); } catch { /* ignore */ }
+                      await loginWithGoogle();
+                    } catch (err) {
+                      toast("error", err instanceof Error ? err.message : "Google sign-in failed.");
+                      setGoogleSignupBusy(false);
+                    }
+                  }}
+                />
 
                 <div className="mt-5 rounded-lg border border-slate-100 bg-slate-50 px-4 py-3 text-center text-sm text-slate-500">
                   Already registered?{" "}
