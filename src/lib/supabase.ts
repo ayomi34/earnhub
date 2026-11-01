@@ -9,7 +9,7 @@ export const paystackPublicKey = (import.meta.env.VITE_PAYSTACK_PUBLIC_KEY as st
 /* Enforce email verification before users can access the dashboard.
  * Requires "Confirm email" to be ON in Supabase Auth settings and
  * a working SMTP / custom sender configured. */
-export const REQUIRE_EMAIL_CONFIRMATION = true;
+export const REQUIRE_EMAIL_CONFIRMATION = false;
 
 export const supabase = createClient(
   supabaseUrl ?? "https://placeholder.supabase.co",
