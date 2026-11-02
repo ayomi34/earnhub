@@ -10,7 +10,7 @@ import {
   NG_BANKS, PageHead, Select, Stat, StatusBadge, Td, Table, fmtDate, fmtDateTime, fmtN,
 } from "../components/ui";
 import {
-  getBalances, getMySubmissions, getPayments, getReferralRows, getReferralStats,
+  getBalances, getMySubmissions, getPayments, getReferralCommissions, getReferralRows, getReferralStats,
   getUserLevel, getWalletTx, getWithdrawals, initializePayment, listLevels, requestWithdrawal,
 } from "../lib/services";
 import { navigate, useAction, useData, useSettings, useUser } from "../lib/store";
@@ -252,11 +252,19 @@ export function Referrals() {
   const user = useUser()!;
   const stats = useData(() => getReferralStats(user.id));
   const rows = useData(() => getReferralRows(user.id));
+  const zentraCommissions = useData(() => getReferralCommissions(user.id).filter((c) => c.commissionType === "zentra"));
+  const membershipCommissions = useData(() => getReferralCommissions(user.id).filter((c) => c.commissionType === "membership"));
   const code = user.referralCode;
+  const [tab, setTab] = useState<"referrals" | "zentra" | "membership">("referrals");
+
+  const tabCls = (t: typeof tab) =>
+    `px-4 py-2 text-sm font-medium rounded-lg transition-colors ${tab === t ? "bg-brand text-white" : "text-slate-500 hover:text-slate-800"}`;
 
   return (
     <div>
-      <PageHead title="Referrals" sub="Single-level commissions — paid only when your referral's own task work is approved." />
+      <PageHead title="Referrals" sub="Earn commissions two ways — task rewards and Zentra cycles from your network." />
+
+      {/* Referral code card */}
       <Card className="mb-5 p-5">
         <p className="text-[13px] font-medium text-slate-700">Your referral code</p>
         <div className="mt-2.5 flex flex-col gap-2.5 sm:flex-row sm:items-center">
@@ -268,40 +276,112 @@ export function Referrals() {
         </div>
         <p className="mt-3 flex items-start gap-2 text-xs leading-relaxed text-slate-400">
           <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          New members must enter this code during registration — accounts cannot be created without it.
-          Your rate: {stats.percent}% of each approved task reward.
+          New members must enter this code during registration. Your task commission rate: {stats.percent}%.
         </p>
       </Card>
 
-      <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
+      {/* Summary stats */}
+      <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4 mb-5">
         <Stat label="Total referrals" value={String(stats.total)} icon={<Users className="h-4.5 w-4.5" />} />
         <Stat label="Active referrals" value={String(stats.active)} icon={<BadgeCheck className="h-4.5 w-4.5" />} sub="membership activated" />
-        <Stat label="Referral earnings" value={fmtN(stats.earned)} tone="brand" icon={<Coins className="h-4.5 w-4.5" />} />
-        <Stat label="Pending commission" value={fmtN(stats.pending)} icon={<Hourglass className="h-4.5 w-4.5" />} sub="from referrals' submissions in review" />
+        <Stat label="Zentra earned" value={`${stats.zentraEarned} ZNTR`} tone="brand" icon={<Coins className="h-4.5 w-4.5" />} sub="gold coin commissions" />
+        <Stat label="Membership earned" value={fmtN(stats.membershipEarned)} tone="brand" icon={<CreditCard className="h-4.5 w-4.5" />} sub="NGN commissions" />
       </div>
 
-      <Card className="mt-5">
-        <CardHeader title="Your referrals" />
-        {rows.length === 0 ? (
-          <EmptyState
-            icon={<Users className="h-5 w-5" />}
-            title="No referrals yet"
-            sub="Share your code. When someone registers with it and activates a membership, they appear here."
-            action={<CopyButton text={code} label="Copy your code" />}
+      {/* Tab navigation */}
+      <div className="mb-4 flex gap-2 rounded-xl bg-slate-100 p-1.5">
+        <button className={tabCls("referrals")} onClick={() => setTab("referrals")}>
+          <span className="flex items-center gap-2"><Users className="h-3.5 w-3.5" />Referrals</span>
+        </button>
+        <button className={tabCls("zentra")} onClick={() => setTab("zentra")}>
+          <span className="flex items-center gap-2"><Coins className="h-3.5 w-3.5" />Zentra Commissions</span>
+        </button>
+        <button className={tabCls("membership")} onClick={() => setTab("membership")}>
+          <span className="flex items-center gap-2"><CreditCard className="h-3.5 w-3.5" />Membership Commissions</span>
+        </button>
+      </div>
+
+      {/* Referrals tab */}
+      {tab === "referrals" && (
+        <Card>
+          <CardHeader title="Your referrals" />
+          {rows.length === 0 ? (
+            <EmptyState
+              icon={<Users className="h-5 w-5" />}
+              title="No referrals yet"
+              sub="Share your code. When someone registers with it and activates a membership, they appear here."
+              action={<CopyButton text={code} label="Copy your code" />}
+            />
+          ) : (
+            <Table head={["Member", "Joined", "Status", "Task commission earned"]}>
+              {rows.map((r) => (
+                <tr key={r.id}>
+                  <Td className="font-medium">{r.name}</Td>
+                  <Td className="text-xs text-slate-400">{fmtDate(r.joined)}</Td>
+                  <Td>{r.effectiveStatus === "active" ? <Badge tone="green">Active</Badge> : <Badge tone="amber">Registered</Badge>}</Td>
+                  <Td className="font-semibold text-brand">{fmtN(r.earned)}</Td>
+                </tr>
+              ))}
+            </Table>
+          )}
+        </Card>
+      )}
+
+      {/* Zentra commissions tab */}
+      {tab === "zentra" && (
+        <Card>
+          <CardHeader
+            title="Zentra Mining Commissions"
+            sub={`${stats.zentraEarned} ZNTR earned — credited to your gold balance`}
           />
-        ) : (
-          <Table head={["Member", "Joined", "Status", "Your commission earned"]}>
-            {rows.map((r) => (
-              <tr key={r.id}>
-                <Td className="font-medium">{r.name}</Td>
-                <Td className="text-xs text-slate-400">{fmtDate(r.joined)}</Td>
-                <Td>{r.effectiveStatus === "active" ? <Badge tone="green">Active</Badge> : <Badge tone="amber">Registered</Badge>}</Td>
-                <Td className="font-semibold text-brand">{fmtN(r.earned)}</Td>
-              </tr>
-            ))}
-          </Table>
-        )}
-      </Card>
+          {zentraCommissions.length === 0 ? (
+            <EmptyState
+              icon={<Coins className="h-5 w-5" />}
+              title="No Zentra commissions yet"
+              sub="You earn ZNTR gold coins whenever an active referral completes a Gold Mine cycle."
+            />
+          ) : (
+            <Table head={["Date", "Description", "Amount", "Status"]}>
+              {zentraCommissions.map((c) => (
+                <tr key={c.id}>
+                  <Td className="text-xs text-slate-400">{fmtDate(c.createdAt)}</Td>
+                  <Td className="text-sm">{c.description ?? "Zentra cycle commission"}</Td>
+                  <Td className="font-semibold text-amber-600">+{c.amount} ZNTR</Td>
+                  <Td><Badge tone="green">Approved</Badge></Td>
+                </tr>
+              ))}
+            </Table>
+          )}
+        </Card>
+      )}
+
+      {/* Membership commissions tab */}
+      {tab === "membership" && (
+        <Card>
+          <CardHeader
+            title="Membership Registration Commissions"
+            sub={`${fmtN(stats.membershipEarned)} earned — credited to your NGN wallet`}
+          />
+          {membershipCommissions.length === 0 ? (
+            <EmptyState
+              icon={<CreditCard className="h-5 w-5" />}
+              title="No membership commissions yet"
+              sub="You earn a flat NGN commission whenever a referral purchases and activates a membership."
+            />
+          ) : (
+            <Table head={["Date", "Description", "Amount", "Status"]}>
+              {membershipCommissions.map((c) => (
+                <tr key={c.id}>
+                  <Td className="text-xs text-slate-400">{fmtDate(c.createdAt)}</Td>
+                  <Td className="text-sm">{c.description ?? "Membership registration commission"}</Td>
+                  <Td className="font-semibold text-brand">+{fmtN(c.amount)}</Td>
+                  <Td><Badge tone="green">Approved</Badge></Td>
+                </tr>
+              ))}
+            </Table>
+          )}
+        </Card>
+      )}
     </div>
   );
 }

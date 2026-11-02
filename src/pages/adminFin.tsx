@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  Banknote, Check, ClipboardList, CreditCard, Eye, FileText, Landmark,
+  Banknote, Check, ClipboardList, Coins, CreditCard, Eye, FileText, Landmark,
   Receipt, Save, ShieldCheck, X,
 } from "lucide-react";
 import {
@@ -346,6 +346,74 @@ export function AdminSettings() {
             <Input value={s.paystackPublicKey} onChange={(e) => setS({ ...s, paystackPublicKey: e.target.value })} />
           </Field>
           <Button loading={busy}><Save className="h-4 w-4" /> Save settings</Button>
+        </form>
+      </Card>
+
+      {/* Referral commission config */}
+      <Card className="mt-5 max-w-2xl">
+        <CardHeader title="Referral commissions" />
+        <form
+          className="space-y-5 p-5"
+          onSubmit={async (e) => {
+            e.preventDefault();
+            await run(() => adminSaveSettings(admin.id, s), "Commission settings saved.");
+          }}
+        >
+          {/* Zentra Mining commission */}
+          <div className="rounded-lg border border-slate-200 p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <p className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                <Coins className="h-4 w-4 text-amber-500" /> Zentra Mining Commission
+              </p>
+              <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-600">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 accent-brand"
+                  checked={s.referralCommissions?.zentraEnabled ?? true}
+                  onChange={(e) => setS({ ...s, referralCommissions: { ...(s.referralCommissions ?? { zentraEnabled: true, zentraPercent: 10, membershipEnabled: true, membershipFlatAmount: 500 }), zentraEnabled: e.target.checked } })}
+                />
+                Enabled
+              </label>
+            </div>
+            <Field label="Commission %" hint="% of referred user's gold reward awarded as ZNTR to referrer">
+              <Input
+                type="number" min={0} max={50} step={1}
+                value={s.referralCommissions?.zentraPercent ?? 10}
+                disabled={!(s.referralCommissions?.zentraEnabled ?? true)}
+                onChange={(e) => setS({ ...s, referralCommissions: { ...(s.referralCommissions ?? { zentraEnabled: true, zentraPercent: 10, membershipEnabled: true, membershipFlatAmount: 500 }), zentraPercent: Number(e.target.value) } })}
+              />
+            </Field>
+            <p className="mt-2 text-xs text-slate-400">Triggers when a referred user completes a Gold Mine cycle. Commission is credited to referrer's ZNTR balance.</p>
+          </div>
+
+          {/* Membership registration commission */}
+          <div className="rounded-lg border border-slate-200 p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <p className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                <CreditCard className="h-4 w-4 text-brand" /> Membership Registration Commission
+              </p>
+              <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-600">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 accent-brand"
+                  checked={s.referralCommissions?.membershipEnabled ?? true}
+                  onChange={(e) => setS({ ...s, referralCommissions: { ...(s.referralCommissions ?? { zentraEnabled: true, zentraPercent: 10, membershipEnabled: true, membershipFlatAmount: 500 }), membershipEnabled: e.target.checked } })}
+                />
+                Enabled
+              </label>
+            </div>
+            <Field label="Flat amount (₦)" hint="Fixed NGN credited to referrer's wallet per membership activation">
+              <Input
+                type="number" min={0} step={50}
+                value={s.referralCommissions?.membershipFlatAmount ?? 500}
+                disabled={!(s.referralCommissions?.membershipEnabled ?? true)}
+                onChange={(e) => setS({ ...s, referralCommissions: { ...(s.referralCommissions ?? { zentraEnabled: true, zentraPercent: 10, membershipEnabled: true, membershipFlatAmount: 500 }), membershipFlatAmount: Number(e.target.value) } })}
+              />
+            </Field>
+            <p className="mt-2 text-xs text-slate-400">Triggers once when a referred user purchases and activates any membership. Commission is credited to referrer's NGN wallet.</p>
+          </div>
+
+          <Button loading={busy}><Save className="h-4 w-4" /> Save commission settings</Button>
         </form>
       </Card>
 

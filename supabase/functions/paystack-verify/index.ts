@@ -110,19 +110,81 @@ Deno.serve(async (req) => {
     body: `You now have access to ${level.name} tasks. Complete approved tasks to earn — membership itself does not generate income.`,
   });
 
+  // Load commission config from platform_settings
+  const { data: platformSettingsRow } = await admin
+    .from("platform_settings")
+    .select("payload")
+    .eq("id", true)
+    .maybeSingle();
+  const commissionCfg = platformSettingsRow?.payload?.referralCommissions ?? {
+    zentraEnabled: true,
+    zentraPercent: 10,
+    membershipEnabled: true,
+    membershipFlatAmount: 500,
+  };
+
   // Activate the referral relationship (commissions flow from real task work)
   const { data: profileRow } = await admin.from("profiles")
     .select("referred_by, full_name").eq("id", user.id).maybeSingle();
   if (profileRow?.referred_by) {
     const { data: ref } = await admin.from("referrals")
-      .select("id, status").eq("referred_id", user.id).maybeSingle();
-    if (ref && ref.status === "pending") {
-      await admin.from("referrals").update({ status: "active" }).eq("id", ref.id);
-      await admin.from("notifications").insert({
-        user_id: profileRow.referred_by, type: "referral",
-        title: "Referral activated",
-        body: `${profileRow.full_name} activated a membership. You'll now earn commission on their approved task rewards.`,
-      });
+      .select("id, status, referrer_id").eq("referred_id", user.id).maybeSingle();
+    if (ref) {
+      // Activate if still pending
+      if (ref.status === "pending") {
+        await admin.from("referrals").update({ status: "active" }).eq("id", ref.id);
+        await admin.from("notifications").insert({
+          user_id: profileRow.referred_by, type: "referral",
+          title: "Referral activated",
+          body: `${profileRow.full_name} activated a membership. You'll now earn commission on their approved task rewards.`,
+        });
+      }
+
+      // ── Membership referral commission ────────────────────────────────
+      if (commissionCfg.membershipEnabled && commissionCfg.membershipFlatAmount > 0) {
+        const commissionAmount = commissionCfg.membershipFlatAmount;
+        const commissionId = crypto.randomUUID();
+        const txRef = `EH-MEM-COMM-${Date.now().toString(36).toUpperCase()}`;
+
+        // Insert referral_commissions row (idempotent via UNIQUE(source_id, commission_type))
+        const { error: commErr } = await admin.from("referral_commissions").insert({
+          id: commissionId,
+          referral_id: ref.id,
+          referrer_id: ref.referrer_id,
+          referred_id: user.id,
+          commission_type: "membership",
+          amount: commissionAmount,
+          currency: "NGN",
+          source_id: payment.id,
+          status: "approved",
+          description: `Membership registration commission — ${profileRow.full_name} activated ${level.name}`,
+        });
+
+        if (!commErr) {
+          // Credit referrer's NGN wallet
+          await admin.from("wallet_transactions").insert({
+            id: crypto.randomUUID(),
+            user_id: ref.referrer_id,
+            type: "membership_commission",
+            direction: "credit",
+            amount: commissionAmount,
+            status: "approved",
+            description: `Membership commission — ${profileRow.full_name} activated ${level.name}`,
+            reference: txRef,
+            source_id: commissionId,
+          });
+
+          // Notify referrer
+          await admin.from("notifications").insert({
+            id: crypto.randomUUID(),
+            user_id: ref.referrer_id,
+            type: "referral",
+            title: "Membership commission earned!",
+            body: `You earned ₦${commissionAmount.toLocaleString()} — your referral ${profileRow.full_name} purchased a ${level.name} membership.`,
+            read: false,
+          });
+        }
+      }
     }
   }
 

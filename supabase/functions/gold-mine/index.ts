@@ -177,6 +177,36 @@ Deno.serve(async (req) => {
       .eq("gold_credited", false)
       .lte("ends_at", new Date().toISOString());
 
+    // Load commission config from platform_settings (frontend settings table)
+    const { data: platformSettingsRow } = await svc
+      .from("platform_settings")
+      .select("payload")
+      .eq("id", true)
+      .maybeSingle();
+    const commissionCfg = platformSettingsRow?.payload?.referralCommissions ?? {
+      zentraEnabled: true,
+      zentraPercent: 10,
+      membershipEnabled: true,
+      membershipFlatAmount: 500,
+    };
+
+    // Find the referring user (if any) — one lookup per batch, not per cycle
+    const { data: profileRow } = await svc
+      .from("profiles")
+      .select("referred_by")
+      .eq("id", user.id)
+      .maybeSingle();
+    let referralRow: { id: string; referrer_id: string } | null = null;
+    if (profileRow?.referred_by) {
+      const { data: ref } = await svc
+        .from("referrals")
+        .select("id, referrer_id")
+        .eq("referred_id", user.id)
+        .eq("status", "active")
+        .maybeSingle();
+      referralRow = ref ?? null;
+    }
+
     const completed: unknown[] = [];
     for (const cycle of matured ?? []) {
       const { error: updErr } = await svc
@@ -191,6 +221,37 @@ Deno.serve(async (req) => {
           body: `Your ${cycle.gold_reward}-gold cycle has completed. The coins have been added to your Gold balance.`,
           read: false,
         });
+
+        // ── Zentra referral commission ────────────────────────────────────
+        if (commissionCfg.zentraEnabled && referralRow && cycle.gold_reward > 0) {
+          const commissionAmount = Math.floor(cycle.gold_reward * commissionCfg.zentraPercent / 100);
+          if (commissionAmount > 0) {
+            // Idempotent: UNIQUE(source_id, commission_type) prevents duplicates
+            const { error: commErr } = await svc.from("referral_commissions").insert({
+              id: crypto.randomUUID(),
+              referral_id: referralRow.id,
+              referrer_id: referralRow.referrer_id,
+              referred_id: user.id,
+              commission_type: "zentra",
+              amount: commissionAmount,
+              currency: "ZNTR",
+              source_id: cycle.id,
+              status: "approved",
+              description: `${commissionCfg.zentraPercent}% Zentra commission on ${cycle.gold_reward} ZNTR cycle`,
+            });
+            if (!commErr) {
+              // Notify referrer
+              await svc.from("notifications").insert({
+                id: crypto.randomUUID(),
+                user_id: referralRow.referrer_id,
+                type: "referral",
+                title: "Zentra commission earned!",
+                body: `You earned ${commissionAmount} ZNTR as a referral commission — your referral completed a Gold Mine cycle.`,
+                read: false,
+              });
+            }
+          }
+        }
       }
     }
     const goldBalance = await getGoldBalance(user.id);

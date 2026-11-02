@@ -1,4 +1,5 @@
 import type { DB, SpinConfig, FeudConfig, FeudQuestion, GoldMineConfig } from "./types";
+import { DEFAULT_REFERRAL_COMMISSION_CONFIG } from "./types";
 
 /* EarnHub client cache.
  * All data lives in Supabase — this store is an in-memory cache hydrated
@@ -194,9 +195,11 @@ function emptyDB(): DB {
       spin: DEFAULT_SPIN_CONFIG,
       feud: DEFAULT_FEUD_CONFIG,
       goldMine: DEFAULT_GOLD_MINE_CONFIG,
+      referralCommissions: DEFAULT_REFERRAL_COMMISSION_CONFIG,
     },
     goldMineCycles: [],
     goldMineConversions: [],
+    referralCommissions: [],
     session: null,
   };
 }

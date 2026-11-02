@@ -5,6 +5,7 @@ export type UserStatus = "active" | "suspended";
 export type TxType =
   | "task_reward"
   | "referral_bonus"
+  | "membership_commission"
   | "spin_reward"
   | "feud_reward"
   | "gold_mine_join"
@@ -338,6 +339,34 @@ export interface GoldMineConversion {
   processedAt: number | null;
 }
 
+export interface ReferralCommissionConfig {
+  zentraEnabled: boolean;
+  zentraPercent: number;          // % of referred user's gold reward (e.g. 10)
+  membershipEnabled: boolean;
+  membershipFlatAmount: number;   // flat NGN per membership activation (e.g. 500)
+}
+
+export const DEFAULT_REFERRAL_COMMISSION_CONFIG: ReferralCommissionConfig = {
+  zentraEnabled: true,
+  zentraPercent: 10,
+  membershipEnabled: true,
+  membershipFlatAmount: 500,
+};
+
+export interface ReferralCommission {
+  id: string;
+  referralId: string;
+  referrerId: string;
+  referredId: string;
+  commissionType: "zentra" | "membership";
+  amount: number;
+  currency: "ZNTR" | "NGN";
+  sourceId: string;
+  status: "approved" | "reversed";
+  description: string | null;
+  createdAt: number;
+}
+
 export interface Settings {
   platformName: string;
   supportEmail: string;
@@ -350,6 +379,7 @@ export interface Settings {
   spin: SpinConfig;
   feud: FeudConfig;
   goldMine: GoldMineConfig;
+  referralCommissions: ReferralCommissionConfig;
 }
 
 export interface AuditLog {
@@ -382,6 +412,7 @@ export interface DB {
   feudSessions: FeudGameSession[];
   goldMineCycles: GoldMineCycle[];
   goldMineConversions: GoldMineConversion[];
+  referralCommissions: ReferralCommission[];
   settings: Settings;
   session: { userId: string } | null;
 }

@@ -291,3 +291,67 @@ create policy "withdrawals: self request" on public.withdrawals for insert
     and (select count(*) from public.referrals r
       where r.referrer_id = auth.uid() and r.status = 'active') >= 3);
 -- ============================================================
+-- ============================================================
+-- 10. Two-stream referral commissions
+-- ============================================================
+
+-- ── referral_commissions table ────────────────────────────────
+-- Tracks every commission event for both streams:
+--   zentra  → gold coins (ZNTR) earned by sponsor when referred completes a cycle
+--   membership → NGN earned by sponsor when referred activates a membership
+-- source_id + commission_type is unique (idempotency)
+
+create table if not exists public.referral_commissions (
+  id              uuid primary key default gen_random_uuid(),
+  referral_id     uuid not null references public.referrals(id),
+  referrer_id     uuid not null references public.profiles(id),
+  referred_id     uuid not null references public.profiles(id),
+  commission_type text not null check (commission_type in ('zentra', 'membership')),
+  amount          numeric not null check (amount > 0),
+  currency        text not null check (currency in ('ZNTR', 'NGN')),
+  source_id       text not null,   -- cycle_id for zentra, payment_id for membership
+  status          text not null default 'approved'
+                  check (status in ('approved', 'reversed')),
+  description     text,
+  created_at      timestamptz not null default now()
+);
+
+create unique index if not exists referral_commissions_source_type_idx
+  on public.referral_commissions(source_id, commission_type);
+create index if not exists referral_commissions_referrer_idx
+  on public.referral_commissions(referrer_id, created_at desc);
+create index if not exists referral_commissions_referred_idx
+  on public.referral_commissions(referred_id, commission_type);
+
+alter table public.referral_commissions enable row level security;
+
+drop policy if exists "referral_commissions: self read" on public.referral_commissions;
+create policy "referral_commissions: self read" on public.referral_commissions
+  for select using (auth.uid() = referrer_id or auth.uid() = referred_id);
+
+drop policy if exists "referral_commissions: admin read" on public.referral_commissions;
+create policy "referral_commissions: admin read" on public.referral_commissions
+  for select using (public.is_admin());
+
+-- ── Expand wallet_transactions type check ─────────────────────
+-- Adds gold_mine_join, gold_mine_conversion, membership_commission
+do $$
+begin
+  if exists (
+    select 1 from pg_constraint
+    where conrelid = 'public.wallet_transactions'::regclass
+      and conname = 'wallet_transactions_type_check'
+  ) then
+    alter table public.wallet_transactions drop constraint wallet_transactions_type_check;
+  end if;
+end
+$$;
+alter table public.wallet_transactions add constraint wallet_transactions_type_check
+  check (type in (
+    'task_reward', 'referral_bonus', 'membership_commission',
+    'gold_mine_join', 'gold_mine_conversion',
+    'withdrawal', 'refund', 'adjustment',
+    'spin_reward', 'feud_reward'
+  ));
+
+-- ============================================================

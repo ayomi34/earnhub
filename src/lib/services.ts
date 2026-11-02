@@ -4,8 +4,9 @@ import type {
   Balances, MembershipLevel, Notification, Payment, Profile, Settings,
   SupportTicket, Task, TaskSubmission, Withdrawal, WalletTx,
   Referral, AuditLog, Membership, SpinConfig, SpinReward, SpinRewardType, SpinWinner,
-  GoldMineCycle, GoldMineConversion,
+  GoldMineCycle, GoldMineConversion, ReferralCommission,
 } from "./types";
+import { DEFAULT_REFERRAL_COMMISSION_CONFIG } from "./types";
 
 /* EarnHub service layer — Supabase is the single source of truth.
  * Every mutation writes to the database first; the in-memory cache is
@@ -672,7 +673,7 @@ export async function hydrateAll() {
     return;
   }
 
-  const [profiles, payments, memberships, withdrawals, walletTx, submissions, referrals, notifications, tickets, audit, spins, feudSessionsRes] =
+  const [profiles, payments, memberships, withdrawals, walletTx, submissions, referrals, notifications, tickets, audit, spins, feudSessionsRes, referralCommissionsRes] =
     await Promise.all([
       supabase.from("profiles").select("*").order("created_at", { ascending: false }),
       supabase.from("payments").select("*").order("created_at", { ascending: false }),
@@ -686,6 +687,7 @@ export async function hydrateAll() {
       supabase.from("audit_logs").select("*").order("created_at", { ascending: false }),
       supabase.from("spins").select("*").order("created_at", { ascending: false }),
       supabase.from("feud_sessions").select("*").order("started_at", { ascending: false }),
+      supabase.from("referral_commissions").select("*").eq("referrer_id", userId).order("created_at", { ascending: false }),
     ]);
 
   const { mapFeudSession } = await import("./feudServices");
@@ -708,6 +710,7 @@ export async function hydrateAll() {
     if (Array.isArray(audit.data)) db.audit = audit.data.map(mapAudit);
     if (Array.isArray(spins.data)) db.spins = spins.data.map(mapSpin);
     if (Array.isArray(feudSessionsRes.data)) db.feudSessions = feudSessionsRes.data.map(mapFeudSession);
+    if (Array.isArray(referralCommissionsRes.data)) db.referralCommissions = referralCommissionsRes.data.map(mapReferralCommission);
   });
 
   // Ensure we have a live feed of new notifications for this user.
@@ -1249,6 +1252,15 @@ export function getReferralStats(userId: string) {
     const task = db.tasks.find((t) => t.id === s.taskId);
     return sum + Math.round(((task?.reward || 0) * percent) / 100);
   }, 0);
+
+  // Two-stream commission stats
+  const zentraCommissions = db.referralCommissions.filter(
+    (c) => c.referrerId === userId && c.commissionType === "zentra" && c.status === "approved"
+  );
+  const membershipCommissions = db.referralCommissions.filter(
+    (c) => c.referrerId === userId && c.commissionType === "membership" && c.status === "approved"
+  );
+
   return {
     rows: rows.sort((a, b) => b.createdAt - a.createdAt),
     total: rows.length,
@@ -1256,6 +1268,11 @@ export function getReferralStats(userId: string) {
     earned: rows.reduce((s, r) => s + r.earned, 0),
     pending: pendingAmount,
     percent,
+    // Commission streams
+    zentraCommissions,
+    zentraEarned: zentraCommissions.reduce((s, c) => s + c.amount, 0),
+    membershipCommissions,
+    membershipEarned: membershipCommissions.reduce((s, c) => s + c.amount, 0),
   };
 }
 
@@ -1528,6 +1545,13 @@ export async function adminSaveSettings(adminId: string, s: Settings) {
   if (s.minWithdrawal < 100) throw new SvcError("Minimum withdrawal must be at least ₦100.");
   if (s.referralPercentDefault < 0 || s.referralPercentDefault > 30)
     throw new SvcError("Referral commission must be between 0% and 30%.");
+  if (s.referralCommissions) {
+    const rc = s.referralCommissions;
+    if (rc.zentraPercent < 0 || rc.zentraPercent > 50)
+      throw new SvcError("Zentra commission percent must be between 0% and 50%.");
+    if (rc.membershipFlatAmount < 0)
+      throw new SvcError("Membership commission amount cannot be negative.");
+  }
   await invokeAdmin("save-settings", { settings: { ...s, minWithdrawal: Math.floor(s.minWithdrawal) } });
   await hydrateAll();
 }
@@ -1564,28 +1588,67 @@ function mapGoldMineConversion(row: any): GoldMineConversion {
   };
 }
 
+function mapReferralCommission(r: any): ReferralCommission {
+  return {
+    id: r.id,
+    referralId: r.referral_id,
+    referrerId: r.referrer_id,
+    referredId: r.referred_id,
+    commissionType: r.commission_type,
+    amount: Number(r.amount),
+    currency: r.currency,
+    sourceId: r.source_id,
+    status: r.status,
+    description: r.description ?? null,
+    createdAt: new Date(r.created_at).getTime(),
+  };
+}
+
 /** Hydrate the current user's gold mine data from Supabase. */
 export async function hydrateGoldMine(userId: string) {
-  const [{ data: cycles }, { data: conversions }] = await Promise.all([
+  const [{ data: cycles }, { data: conversions }, { data: commissions }] = await Promise.all([
     supabase.from("gold_mine_cycles").select("*").eq("user_id", userId).order("created_at", { ascending: false }),
     supabase.from("gold_mine_conversions").select("*").eq("user_id", userId).order("created_at", { ascending: false }),
+    supabase.from("referral_commissions").select("*").eq("referrer_id", userId).order("created_at", { ascending: false }),
   ]);
   update((db) => {
     db.goldMineCycles = (cycles ?? []).map(mapGoldMineCycle);
     db.goldMineConversions = (conversions ?? []).map(mapGoldMineConversion);
+    db.referralCommissions = (commissions ?? []).map(mapReferralCommission);
   });
 }
 
-/** Compute current gold balance from in-memory cache. */
+/** Load referral commissions for the current user into cache. */
+export async function loadReferralCommissions(userId: string) {
+  const { data } = await supabase
+    .from("referral_commissions")
+    .select("*")
+    .eq("referrer_id", userId)
+    .order("created_at", { ascending: false });
+  update((db) => {
+    db.referralCommissions = (data ?? []).map(mapReferralCommission);
+  });
+}
+
+/** Get referral commissions for a user from in-memory cache. */
+export function getReferralCommissions(userId: string): ReferralCommission[] {
+  return read().referralCommissions.filter((c) => c.referrerId === userId);
+}
+
+/** Compute current gold (ZNTR) balance from in-memory cache.
+ *  Includes earned cycles + approved zentra referral commissions, minus spent conversions. */
 export function getGoldBalance(userId: string): number {
   const db = read();
-  const earned = db.goldMineCycles
+  const cycleEarned = db.goldMineCycles
     .filter((c) => c.userId === userId && c.goldCredited)
     .reduce((s, c) => s + c.goldReward, 0);
+  const commissionEarned = db.referralCommissions
+    .filter((c) => c.referrerId === userId && c.commissionType === "zentra" && c.status === "approved")
+    .reduce((s, c) => s + c.amount, 0);
   const spent = db.goldMineConversions
     .filter((c) => c.userId === userId && c.status !== "rejected")
     .reduce((s, c) => s + c.goldAmount, 0);
-  return Math.max(0, earned - spent);
+  return Math.max(0, cycleEarned + commissionEarned - spent);
 }
 
 /** Join a new gold mine cycle (calls edge function). */
