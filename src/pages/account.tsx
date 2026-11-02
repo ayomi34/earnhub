@@ -258,7 +258,7 @@ export function Referrals() {
   const [tab, setTab] = useState<"referrals" | "zentra" | "membership">("referrals");
 
   const tabCls = (t: typeof tab) =>
-    `px-4 py-2 text-sm font-medium rounded-lg transition-colors ${tab === t ? "bg-brand text-white" : "text-slate-500 hover:text-slate-800"}`;
+    `flex-1 min-w-0 px-3 py-2 text-xs sm:text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${tab === t ? "bg-brand text-white" : "text-slate-500 hover:text-slate-800"}`;
 
   return (
     <div>
@@ -281,7 +281,7 @@ export function Referrals() {
       </Card>
 
       {/* Summary stats */}
-      <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4 mb-5">
+      <div className="mb-5 grid grid-cols-2 gap-3 md:gap-4">
         <Stat label="Total referrals" value={String(stats.total)} icon={<Users className="h-4.5 w-4.5" />} />
         <Stat label="Active referrals" value={String(stats.active)} icon={<BadgeCheck className="h-4.5 w-4.5" />} sub="membership activated" />
         <Stat label="Zentra earned" value={`${stats.zentraEarned} ZNTR`} tone="brand" icon={<Coins className="h-4.5 w-4.5" />} sub="gold coin commissions" />
@@ -289,15 +289,15 @@ export function Referrals() {
       </div>
 
       {/* Tab navigation */}
-      <div className="mb-4 flex gap-2 rounded-xl bg-slate-100 p-1.5">
+      <div className="mb-4 flex gap-1.5 overflow-x-auto rounded-xl bg-slate-100 p-1.5">
         <button className={tabCls("referrals")} onClick={() => setTab("referrals")}>
-          <span className="flex items-center gap-2"><Users className="h-3.5 w-3.5" />Referrals</span>
+          <span className="flex items-center justify-center gap-1.5"><Users className="h-3.5 w-3.5 shrink-0" /><span>Referrals</span></span>
         </button>
         <button className={tabCls("zentra")} onClick={() => setTab("zentra")}>
-          <span className="flex items-center gap-2"><Coins className="h-3.5 w-3.5" />Zentra Commissions</span>
+          <span className="flex items-center justify-center gap-1.5"><Coins className="h-3.5 w-3.5 shrink-0" /><span className="hidden sm:inline">Zentra </span><span>Commissions</span></span>
         </button>
         <button className={tabCls("membership")} onClick={() => setTab("membership")}>
-          <span className="flex items-center gap-2"><CreditCard className="h-3.5 w-3.5" />Membership Commissions</span>
+          <span className="flex items-center justify-center gap-1.5"><CreditCard className="h-3.5 w-3.5 shrink-0" /><span className="hidden sm:inline">Membership </span><span>Commissions</span></span>
         </button>
       </div>
 
