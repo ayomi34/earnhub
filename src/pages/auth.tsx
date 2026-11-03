@@ -516,15 +516,14 @@ export function Register() {
                         className="mt-0.5 h-4 w-4 shrink-0 accent-brand"
                       />
                       <span className="text-[13px] leading-relaxed text-slate-700">
-                        I have read and I agree to the{" "}
+                        I agree to the{" "}
                         <a href="/#/terms" target="_blank" rel="noopener noreferrer" className="font-semibold text-brand underline underline-offset-2">
                           Terms &amp; Conditions
                         </a>{" "}
                         and{" "}
                         <a href="/#/privacy" target="_blank" rel="noopener noreferrer" className="font-semibold text-brand underline underline-offset-2">
                           Privacy Policy
-                        </a>
-                        . I understand that membership fees are non-refundable and that earnings are not guaranteed.
+                        </a>.
                       </span>
                     </label>
                     {errors.agreed && (
