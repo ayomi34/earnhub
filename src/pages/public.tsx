@@ -204,47 +204,6 @@ export function Landing() {
         </div>
       </section>
 
-      {/* features strip */}
-      <section className="border-b border-slate-100 bg-white">
-        <div className="mx-auto max-w-6xl px-4 py-14 md:px-6">
-          <div className="text-center mb-10">
-            <p className="text-xs font-semibold uppercase tracking-widest text-brand">Why EarnHub</p>
-            <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">Built for honest earners</h2>
-          </div>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              {
-                img: "/images/gift-coins.png",
-                title: "Real rewards",
-                desc: "Earn gold coins and cash credited only when your task submission is approved by a reviewer.",
-              },
-              {
-                img: "/images/growth-chart.png",
-                title: "Growing earnings",
-                desc: "The more tasks you complete, the more your wallet grows — at your own pace, with full transparency.",
-              },
-              {
-                img: "/images/group-laptop.png",
-                title: "Refer & earn",
-                desc: "Invite friends. Every time a referral's task is approved, you earn a commission — single-level, no MLM.",
-              },
-              {
-                img: "/images/security-shield.png",
-                title: "Secure & verified",
-                desc: "Every payment is verified server-side via Paystack. Your data is protected under NDPA 2023.",
-              },
-            ].map((f) => (
-              <div key={f.title} className="flex flex-col items-center text-center rounded-2xl border border-slate-100 bg-slate-50 p-5 shadow-sm">
-                <div className="mb-4 flex h-24 w-24 items-center justify-center">
-                  <img src={f.img} alt={f.title} className="h-full w-full object-contain drop-shadow-md" />
-                </div>
-                <p className="text-sm font-semibold text-slate-900">{f.title}</p>
-                <p className="mt-1.5 text-[13px] leading-relaxed text-slate-500">{f.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* steps */}
       <section className="mx-auto max-w-6xl px-4 py-16 md:px-6">
