@@ -382,23 +382,121 @@ export function FaqPage() {
 
 export function TermsPage() {
   const s = useSettings();
-  const sections = [
-    ["1. Service description", `${s.platformName} is a digital micro-task platform. Members pay a one-time access fee to unlock a catalogue of tasks supplied by platform partners. Membership access does not constitute an investment, deposit, savings plan or share in platform revenue, and no income is guaranteed by holding a membership.`],
-    ["2. Earnings", "Wallet credit is generated exclusively from: (a) task rewards for submissions approved through manual review, and (b) single-level referral commissions calculated on approved task work of direct referrals at rates set by the platform. The platform may reject submissions that do not meet stated requirements; rejected work earns nothing and decisions are final subject to support review."],
-    ["3. Membership fees", "Membership fees are non-refundable once the catalogue has been accessed. Fees may differ between levels and may be changed by the platform at any time; the price displayed and paid at checkout applies to your purchase. Failure of payment verification leaves membership inactive."],
-    ["4. Withdrawals", "Withdrawals are subject to a minimum threshold, account verification and manual processing. The platform may delay or reject withdrawals that fail fraud, duplicate-account or quality checks. Rejected withdrawals return the held amount to the available balance. Processing times are estimates, not guarantees."],
-    ["5. Acceptable use", "One account per person. Automated submissions, plagiarism, fabricated proof, multi-accounting and attempts to manipulate the ledger or referral system result in suspension and forfeiture of unapproved earnings."],
-    ["6. Liability", "The platform is provided as-is. Task availability fluctuates and the platform does not warrant any minimum earning level. Nothing on this platform is financial advice."],
+  const sections: [string, string | string[]][] = [
+    [
+      "1. About this agreement",
+      `These Terms & Conditions ("Terms") govern your access to and use of ${s.platformName} ("the Platform", "we", "us"). By creating an account or clicking "I agree to the Terms & Conditions" during registration you confirm that you have read, understood and accepted these Terms in full. If you do not agree, do not register or use the Platform.`,
+    ],
+    [
+      "2. Eligibility",
+      [
+        "You must be at least 18 years old to register.",
+        "Registration is by referral only — you must provide a valid referral code issued by an existing member.",
+        "You may hold only one account. Creating multiple accounts for the same person constitutes fraud and results in permanent suspension.",
+        "You must be capable of entering into a legally binding contract under Nigerian law.",
+      ],
+    ],
+    [
+      "3. Nature of the Platform",
+      `${s.platformName} is a digital micro-task platform. Paying a membership fee grants you access to a catalogue of tasks supplied by platform partners. Membership access does not constitute an investment, a deposit, a savings plan, a share of platform revenue, or any form of financial instrument. Earnings are not guaranteed. The Platform does not represent that any level of income will be achieved.`,
+    ],
+    [
+      "4. Membership fees",
+      [
+        "Membership fees are one-time access fees, charged per level.",
+        "Fees are non-refundable once membership has been activated and the task catalogue accessed.",
+        "Payment is processed through Paystack. Membership activation occurs only after server-side payment verification; an unverified payment never activates a membership.",
+        "Fee amounts may change at any time; the price displayed and confirmed at checkout applies to your purchase.",
+        "Purchasing a higher membership level deactivates your current level; the difference in value is not refunded.",
+      ],
+    ],
+    [
+      "5. Earnings and wallet",
+      [
+        "Wallet credit is generated exclusively from: (a) task rewards for submissions approved through manual review, (b) single-level referral commissions on approved task rewards of your direct referrals, (c) Zentra (ZNTR) gold-coin commissions when your direct referrals complete Gold Mine cycles, and (d) membership registration commissions when your direct referrals purchase and activate a membership.",
+        "Referral commissions apply only to direct referrals (one level). There are no multi-level or network commissions.",
+        "Task reward rates are set by the Platform and may change without notice. Rates displayed at the time of submission apply to that submission.",
+        "The Platform may reject any submission that does not meet stated requirements. Rejected work earns nothing. Review decisions are final, subject to a one-time support appeal.",
+        "Wallet balances are computed from the live ledger. The Platform does not hold fiat currency on your behalf; balances represent an amount available for withdrawal, not a bank deposit.",
+        "ZNTR gold coins are an in-platform unit only. They have no monetary value outside the Platform and cannot be transferred, sold, or exchanged except through the Platform's Gold Mine conversion feature.",
+      ],
+    ],
+    [
+      "6. Withdrawals",
+      [
+        "Withdrawals require a minimum balance as set by the Platform, and a minimum of three active referrals (referrals who have activated a paid membership).",
+        "All withdrawals are processed manually to a Nigerian bank account in your name. Processing typically takes 24–48 hours on business days; this is an estimate, not a guarantee.",
+        "The Platform may delay or reject withdrawals that fail anti-fraud, duplicate-account, or submission-quality checks. Rejected withdrawals return the held amount to your available balance.",
+        "The Platform reserves the right to place a temporary hold on withdrawals during investigations.",
+        "Providing incorrect bank details is your responsibility. The Platform is not liable for failed transfers resulting from incorrect details.",
+      ],
+    ],
+    [
+      "7. Acceptable use",
+      [
+        "One account per person. Sharing accounts or creating accounts on behalf of others is prohibited.",
+        "All task submissions must be your own original work, completed honestly and in accordance with task instructions.",
+        "Prohibited conduct includes: automated or bot-assisted submissions; plagiarism or copy-paste from other sources; fabricated screenshots, proofs or evidence; manipulating the referral system with fake accounts; attempting to reverse-engineer, scrape, or abuse the Platform's API or backend.",
+        "Violations result in immediate account suspension, forfeiture of unapproved earnings, and may be reported to relevant Nigerian authorities where financial fraud is suspected.",
+      ],
+    ],
+    [
+      "8. Gold Mine feature",
+      `The Gold Mine feature allows members to run timed cycles that credit ZNTR gold coins on completion. ZNTR coins may be converted to NGN at the Platform's published rate, subject to a conversion fee, minimum balance, and daily conversion limit. Conversion requests are subject to admin approval. The Platform may adjust Gold Mine parameters, rates, and availability at any time without prior notice.`,
+    ],
+    [
+      "9. Intellectual property",
+      `All content on the Platform — including task briefs, UI, branding and instructional material — belongs to ${s.platformName} or its licensors. You may not copy, distribute or resell any part of the Platform's content. Task submissions you upload grant the Platform a perpetual, royalty-free licence to use, store and review them for the purpose of operating the Platform.`,
+    ],
+    [
+      "10. Account suspension and termination",
+      [
+        "We may suspend or terminate your account at any time for breach of these Terms, suspected fraud, inactivity exceeding 12 months, or at our discretion with reasonable notice.",
+        "On suspension for fraud or Terms violation, unapproved earnings are forfeited. Approved earnings that have not yet been withdrawn may be released at our discretion following investigation.",
+        "You may close your account by contacting support. Any approved balance will be paid out (subject to withdrawal minimums) before closure.",
+      ],
+    ],
+    [
+      "11. Limitation of liability",
+      `The Platform is provided "as-is". Task availability fluctuates and we make no warranty regarding minimum earnings, uptime or uninterrupted access. To the fullest extent permitted by Nigerian law, ${s.platformName} is not liable for indirect, incidental or consequential losses arising from your use of the Platform. Our total aggregate liability to you for any claim shall not exceed the total membership fee you paid in the 12 months preceding the claim.`,
+    ],
+    [
+      "12. Governing law",
+      `These Terms are governed by the laws of the Federal Republic of Nigeria. Any dispute arising from these Terms shall be subject to the exclusive jurisdiction of the courts of Nigeria. If you have a complaint, contact our support team first — most issues are resolved within 48 hours.`,
+    ],
+    [
+      "13. Changes to these Terms",
+      `We may update these Terms at any time. The updated version will be published on this page with a revised date. Continued use of the Platform after changes are published constitutes acceptance of the new Terms. Material changes will be announced via in-app notification.`,
+    ],
+    [
+      "14. Contact",
+      `For questions about these Terms, contact us at ${s.supportEmail} or ${s.supportPhone}.`,
+    ],
   ];
+
   return (
     <div className="mx-auto max-w-3xl px-4 py-14 md:px-6">
-      <h1 className="text-3xl font-bold tracking-tight text-slate-900">Terms & Conditions</h1>
-      <p className="mt-2 text-xs text-slate-400">Last updated: January 2026</p>
-      <div className="mt-8 space-y-6">
-        {sections.map(([t, b]) => (
-          <div key={t}>
-            <h2 className="text-sm font-semibold text-slate-900">{t}</h2>
-            <p className="mt-2 text-sm leading-relaxed text-slate-600">{b}</p>
+      <h1 className="text-3xl font-bold tracking-tight text-slate-900">Terms &amp; Conditions</h1>
+      <p className="mt-2 text-xs text-slate-400">Last updated: November 2026 · Effective immediately on registration</p>
+      <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] leading-relaxed text-amber-800">
+        <strong>Please read carefully.</strong> By registering on {s.platformName} you agree to be bound by these Terms. Membership fees are non-refundable. Earnings are not guaranteed.
+      </p>
+      <div className="mt-8 space-y-7">
+        {sections.map(([title, body]) => (
+          <div key={title}>
+            <h2 className="text-sm font-bold text-slate-900">{title}</h2>
+            {Array.isArray(body) ? (
+              <ul className="mt-2 space-y-1.5 pl-1">
+                {body.map((item, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm leading-relaxed text-slate-600">
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-slate-400" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-2 text-sm leading-relaxed text-slate-600">{body}</p>
+            )}
           </div>
         ))}
       </div>
@@ -408,23 +506,112 @@ export function TermsPage() {
 
 export function PrivacyPage() {
   const s = useSettings();
+  const sections: [string, string | string[]][] = [
+    [
+      "1. Introduction",
+      `This Privacy Policy explains how ${s.platformName} ("we", "us", "the Platform") collects, uses, stores and protects your personal data when you register and use the Platform. We are committed to handling your information responsibly and in line with the Nigeria Data Protection Act 2023 (NDPA). By registering you consent to the practices described in this Policy.`,
+    ],
+    [
+      "2. Data we collect",
+      [
+        "Identity & contact: full name, email address, phone number, and (when provided) a profile photo.",
+        "Account data: referral code used at registration, referral code assigned to you, membership level, account creation date.",
+        "Financial data: task earnings, wallet balance, withdrawal requests, bank name, account number, account name. Card details are processed directly by Paystack and never stored on our servers.",
+        "Task submissions: work you submit, including any uploaded screenshots, documents or other proof files.",
+        "Usage data: pages visited, actions taken within the app, browser type, device type, and approximate location (country/region) derived from IP address.",
+        "Communications: support tickets, messages and any other correspondence you send us.",
+      ],
+    ],
+    [
+      "3. How we use your data",
+      [
+        "To create and manage your account, including identity verification.",
+        "To operate your wallet and compute balances from the live transaction ledger.",
+        "To review task submissions and determine whether rewards are payable.",
+        "To process withdrawals to your nominated Nigerian bank account.",
+        "To calculate and credit referral commissions, Zentra commissions and membership registration commissions.",
+        "To send in-app notifications about your account activity, task updates and Platform announcements.",
+        "To detect and prevent fraud, duplicate accounts, and abuse of the referral or task systems.",
+        "To comply with applicable Nigerian financial regulations and payment-compliance obligations.",
+        "To improve the Platform through aggregate, anonymised analytics.",
+      ],
+    ],
+    [
+      "4. Data sharing",
+      [
+        "We do not sell your personal data to third parties.",
+        "Payment processing: Paystack processes card transactions. Their privacy policy governs that data.",
+        "Bank transfers: your bank name, account number and account name are shared with our payment partner solely to execute your withdrawal.",
+        "Service providers: we use trusted providers for hosting (Supabase), email notifications (Resend), and cloud infrastructure. These providers are contractually restricted from using your data for any other purpose.",
+        "Legal obligations: we may disclose data if required by a Nigerian court order, regulatory body, or law enforcement authority.",
+        "Referral display: the Platform may display a member's first name (masked) in referral statistics visible to their referrer. Full names are never shown to other members.",
+      ],
+    ],
+    [
+      "5. Data retention",
+      [
+        "Account and wallet data is retained for as long as your account is active and for seven years after closure, in line with Nigerian financial-record retention requirements.",
+        "Task submission files are retained for 12 months after submission date, then deleted unless disputed.",
+        "Support correspondence is retained for three years.",
+        "You may request deletion of non-financial data at any time; financial transaction records cannot be deleted before the statutory retention period expires.",
+      ],
+    ],
+    [
+      "6. Security",
+      `We use industry-standard security measures including HTTPS encryption in transit, row-level security on the database, hashed passwords, and restricted access to production systems. No internet-based transmission is 100% secure; we cannot guarantee absolute security, but we take reasonable steps to protect your data and will notify you of a data breach affecting your account within 72 hours of discovery.`,
+    ],
+    [
+      "7. Your rights (NDPA 2023)",
+      [
+        "Access: request a copy of the personal data we hold about you.",
+        "Correction: ask us to correct inaccurate or incomplete data.",
+        "Deletion: request deletion of your personal data (subject to legal retention obligations).",
+        "Portability: receive your data in a structured, machine-readable format.",
+        "Objection: object to processing based on legitimate interest.",
+        "Withdraw consent: where processing is based on consent (e.g. marketing emails), you may withdraw consent at any time.",
+        `To exercise any of these rights, contact us at ${s.supportEmail}. We will respond within 30 days.`,
+      ],
+    ],
+    [
+      "8. Cookies and tracking",
+      `The Platform uses session storage and local storage in your browser to maintain your login session and preferences. We do not use third-party advertising cookies. Usage analytics are collected in aggregate and do not identify you individually.`,
+    ],
+    [
+      "9. Children",
+      `The Platform is not directed at persons under 18. We do not knowingly collect data from minors. If you believe a minor has registered, contact us immediately and we will delete the account.`,
+    ],
+    [
+      "10. Changes to this Policy",
+      `We may update this Policy periodically. The current version is always available at this URL. Material changes will be announced via in-app notification at least 14 days before taking effect.`,
+    ],
+    [
+      "11. Contact",
+      `Data protection enquiries: ${s.supportEmail} · ${s.supportPhone}. For formal complaints, you may also contact the Nigeria Data Protection Commission (NDPC) at ndpb.gov.ng.`,
+    ],
+  ];
+
   return (
     <div className="mx-auto max-w-3xl px-4 py-14 md:px-6">
       <h1 className="text-3xl font-bold tracking-tight text-slate-900">Privacy Policy</h1>
-      <p className="mt-2 text-xs text-slate-400">Last updated: January 2026</p>
-      <div className="mt-8 space-y-6 text-sm leading-relaxed text-slate-600">
-        <div>
-          <h2 className="text-sm font-semibold text-slate-900">Data we collect</h2>
-          <p className="mt-2">Account details (name, email, phone), task submissions and proofs, withdrawal bank details, and payment references. Card details are processed directly by Paystack and never touch {s.platformName} servers.</p>
-        </div>
-        <div>
-          <h2 className="text-sm font-semibold text-slate-900">How we use it</h2>
-          <p className="mt-2">To operate your wallet and ledger, review submissions, process payouts via your bank, prevent fraud and meet payment-compliance obligations. We do not sell personal data. Referral leaderboards mask member names.</p>
-        </div>
-        <div>
-          <h2 className="text-sm semibold text-slate-900 font-semibold">Your rights</h2>
-          <p className="mt-2">You may request account data export or deletion (subject to financial-record retention required by Nigerian regulation) via {s.supportEmail}.</p>
-        </div>
+      <p className="mt-2 text-xs text-slate-400">Last updated: November 2026 · Applies to all registered members</p>
+      <div className="mt-8 space-y-7">
+        {sections.map(([title, body]) => (
+          <div key={title}>
+            <h2 className="text-sm font-bold text-slate-900">{title}</h2>
+            {Array.isArray(body) ? (
+              <ul className="mt-2 space-y-1.5 pl-1">
+                {body.map((item, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm leading-relaxed text-slate-600">
+                    <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-slate-400" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-2 text-sm leading-relaxed text-slate-600">{body}</p>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );

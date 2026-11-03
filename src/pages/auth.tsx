@@ -378,7 +378,8 @@ export function Register() {
   const [form, setForm] = useState<RegData>({
     fullName: "", email: "", phone: "", password: "", confirm: "",
   });
-  const [errors, setErrors] = useState<Partial<RegData> & { referralCode?: string }>({});
+  const [agreed, setAgreed] = useState(false);
+  const [errors, setErrors] = useState<Partial<RegData> & { referralCode?: string; agreed?: string }>({});
   const { busy, run } = useAction();
   const toast = useToast();
   const submittingRef = useRef(false);
@@ -393,6 +394,7 @@ export function Register() {
     if (!/^(\+?234|0)\d{10}$/.test(form.phone.replace(/\s/g, ""))) e.phone = "e.g. 08012345678";
     if (form.password.length < 8) e.password = "Minimum 8 characters";
     if (form.confirm !== form.password) e.confirm = "Passwords do not match";
+    if (!agreed) e.agreed = "You must read and accept the Terms & Conditions and Privacy Policy to continue";
     setErrors(e);
     if (Object.keys(e).length) return;
 
@@ -501,6 +503,35 @@ export function Register() {
                     />
                   </Field>
 
+                  {/* Terms acceptance */}
+                  <div className={`rounded-lg border p-3.5 ${errors.agreed ? "border-red-300 bg-red-50" : "border-slate-200 bg-slate-50"}`}>
+                    <label className="flex cursor-pointer items-start gap-3">
+                      <input
+                        type="checkbox"
+                        checked={agreed}
+                        onChange={(e) => {
+                          setAgreed(e.target.checked);
+                          if (e.target.checked) setErrors((prev) => { const n = { ...prev }; delete n.agreed; return n; });
+                        }}
+                        className="mt-0.5 h-4 w-4 shrink-0 accent-brand"
+                      />
+                      <span className="text-[13px] leading-relaxed text-slate-700">
+                        I have read and I agree to the{" "}
+                        <a href="/#/terms" target="_blank" rel="noopener noreferrer" className="font-semibold text-brand underline underline-offset-2">
+                          Terms &amp; Conditions
+                        </a>{" "}
+                        and{" "}
+                        <a href="/#/privacy" target="_blank" rel="noopener noreferrer" className="font-semibold text-brand underline underline-offset-2">
+                          Privacy Policy
+                        </a>
+                        . I understand that membership fees are non-refundable and that earnings are not guaranteed.
+                      </span>
+                    </label>
+                    {errors.agreed && (
+                      <p className="mt-2 text-[12px] font-medium text-red-600">{errors.agreed}</p>
+                    )}
+                  </div>
+
                   <Button loading={busy} disabled={busy} className="w-full" onClick={next}>
                     Continue <ArrowRight className="h-4 w-4" />
                   </Button>
@@ -512,10 +543,10 @@ export function Register() {
                 <GoogleButton
                   loading={googleSignupBusy}
                   onClick={async () => {
-                    if (!refCode.trim()) {
-                      setErrors({ ...errors, referralCode: "Enter your referral code before continuing with Google" });
-                      return;
-                    }
+                    const googleErrors: typeof errors = {};
+                    if (!refCode.trim()) googleErrors.referralCode = "Enter your referral code before continuing with Google";
+                    if (!agreed) googleErrors.agreed = "You must accept the Terms & Conditions and Privacy Policy to continue";
+                    if (Object.keys(googleErrors).length) { setErrors(googleErrors); return; }
                     setGoogleSignupBusy(true);
                     try {
                       try { sessionStorage.setItem("eh_ref", refCode.trim().toUpperCase()); } catch { /* ignore */ }
