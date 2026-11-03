@@ -174,8 +174,8 @@ export function Landing() {
             <div className="relative hidden md:block">
               <div className="absolute inset-0 -z-10 rounded-3xl bg-brand-100/50 blur-3xl" />
               <img
-                src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=720&q=80"
-                alt="African professional woman working on a laptop"
+                src="/images/hero-woman.png"
+                alt="Excited woman celebrating earnings on her laptop"
                 className="relative w-full rounded-2xl object-cover shadow-2xl ring-1 ring-slate-200"
                 style={{ aspectRatio: "4/3" }}
               />
@@ -204,24 +204,45 @@ export function Landing() {
         </div>
       </section>
 
-      {/* honesty strip */}
-      <section className="border-b border-slate-100">
-        <div className="mx-auto grid max-w-6xl gap-6 px-4 py-10 sm:grid-cols-3 md:px-6">
-          {[
-            { icon: ClipboardCheck, title: "Work-verified earnings", desc: "Every reward is credited only after a human reviewer approves your submission.", img: "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=200&q=70" },
-            { icon: Wallet, title: "Real ledger wallet", desc: "Pending, available and withdrawn balances are computed from an auditable ledger.", img: "https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=200&q=70" },
-            { icon: Smartphone, title: "Paid to your bank", desc: "Withdraw to any Nigerian bank account once you reach the minimum threshold.", img: "https://images.unsplash.com/photo-1616803689943-5601631c7fec?w=200&q=70" },
-          ].map((f) => (
-            <div key={f.title} className="flex gap-3.5">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand">
-                <f.icon className="h-5 w-5" />
-              </span>
-              <div>
+      {/* features strip */}
+      <section className="border-b border-slate-100 bg-white">
+        <div className="mx-auto max-w-6xl px-4 py-14 md:px-6">
+          <div className="text-center mb-10">
+            <p className="text-xs font-semibold uppercase tracking-widest text-brand">Why EarnHub</p>
+            <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">Built for honest earners</h2>
+          </div>
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              {
+                img: "/images/gift-coins.png",
+                title: "Real rewards",
+                desc: "Earn gold coins and cash credited only when your task submission is approved by a reviewer.",
+              },
+              {
+                img: "/images/growth-chart.png",
+                title: "Growing earnings",
+                desc: "The more tasks you complete, the more your wallet grows — at your own pace, with full transparency.",
+              },
+              {
+                img: "/images/group-laptop.png",
+                title: "Refer & earn",
+                desc: "Invite friends. Every time a referral's task is approved, you earn a commission — single-level, no MLM.",
+              },
+              {
+                img: "/images/security-shield.png",
+                title: "Secure & verified",
+                desc: "Every payment is verified server-side via Paystack. Your data is protected under NDPA 2023.",
+              },
+            ].map((f) => (
+              <div key={f.title} className="flex flex-col items-center text-center rounded-2xl border border-slate-100 bg-slate-50 p-5 shadow-sm">
+                <div className="mb-4 flex h-24 w-24 items-center justify-center">
+                  <img src={f.img} alt={f.title} className="h-full w-full object-contain drop-shadow-md" />
+                </div>
                 <p className="text-sm font-semibold text-slate-900">{f.title}</p>
-                <p className="mt-1 text-[13px] leading-relaxed text-slate-500">{f.desc}</p>
+                <p className="mt-1.5 text-[13px] leading-relaxed text-slate-500">{f.desc}</p>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </section>
 
@@ -266,12 +287,7 @@ export function Landing() {
 
       {/* final CTA */}
       <section className="relative border-t border-slate-100 overflow-hidden bg-brand">
-        <img
-          src="https://images.unsplash.com/photo-1531685250784-7569952593d2?w=1400&q=60"
-          alt=""
-          aria-hidden="true"
-          className="absolute inset-0 h-full w-full object-cover opacity-10 mix-blend-luminosity"
-        />
+        <div className="absolute inset-0 bg-gradient-to-br from-brand-dark/30 to-transparent pointer-events-none" />
         <div className="relative mx-auto max-w-6xl px-4 py-14 text-center md:px-6">
           <h2 className="text-2xl font-bold tracking-tight text-white md:text-3xl">Ready to do real work for real naira?</h2>
           <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-green-100">
