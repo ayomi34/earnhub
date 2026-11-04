@@ -296,22 +296,37 @@ Deno.serve(async (req) => {
 
     const reference = `EH-GM-CONV-${Date.now().toString(36).toUpperCase()}${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
 
+    const conversionId = crypto.randomUUID();
     const { data: conversion, error: convErr } = await svc.from("gold_mine_conversions").insert({
-      id: crypto.randomUUID(),
+      id: conversionId,
       user_id: user.id,
       gold_amount: goldAmount,
       cash_amount: cashAmount,
       fee_amount: feeAmount,
-      status: "pending",
+      status: "approved",
       reference,
     }).select().maybeSingle();
 
     if (convErr) return json({ error: `Failed to submit conversion: ${convErr.message}` }, 500);
 
+    // Auto-approve: credit the cash amount to the user's NGN wallet immediately
+    const walletTxRef = `EH-GM-CASH-${Date.now().toString(36).toUpperCase()}`;
+    await svc.from("wallet_transactions").insert({
+      id: crypto.randomUUID(),
+      user_id: user.id,
+      type: "gold_conversion",
+      direction: "credit",
+      amount: cashAmount,
+      status: "approved",
+      description: `Gold conversion — ${goldAmount} ZNTR → ₦${cashAmount.toLocaleString()} (${cfg.conversionFeePercent}% fee applied)`,
+      reference: walletTxRef,
+      source_id: conversionId,
+    });
+
     await svc.from("notifications").insert({
       id: crypto.randomUUID(), user_id: user.id, type: "system",
-      title: "Gold conversion submitted",
-      body: `Your request to convert ${goldAmount} gold coins to ₦${cashAmount.toLocaleString()} (after ${cfg.conversionFeePercent}% fee) is pending admin approval.`,
+      title: "Gold conversion approved!",
+      body: `Your ${goldAmount} ZNTR has been converted to ₦${cashAmount.toLocaleString()} and credited to your wallet.`,
       read: false,
     });
 
