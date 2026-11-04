@@ -404,7 +404,7 @@ export function GoldMinePage() {
       await requestGoldConversion(user.id, amt);
       setConvModal(false);
       setGoldInput("");
-      setSuccess("Conversion request submitted! It will be reviewed by our team.");
+      setSuccess("Conversion approved! Your NGN has been credited to your wallet.");
     } catch (e: any) {
       setError(e.message || "Conversion failed.");
     } finally {

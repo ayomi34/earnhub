@@ -1705,6 +1705,29 @@ export async function requestGoldConversion(userId: string, goldAmount: number):
   update((db) => {
     db.goldMineConversions = [conv, ...db.goldMineConversions.filter((c) => c.id !== conv.id)];
   });
+
+  // Fetch the wallet credit that the edge function created and push it into the
+  // local store so the NGN balance updates immediately without a full page reload.
+  try {
+    const { data: txRows } = await supabase
+      .from("wallet_transactions")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("source_id", conv.id)
+      .eq("type", "gold_conversion")
+      .limit(1);
+    if (txRows && txRows.length > 0) {
+      const walletEntry = mapWalletTx(txRows[0]);
+      update((db) => {
+        const exists = db.walletTx.findIndex((t) => t.id === walletEntry.id);
+        if (exists >= 0) db.walletTx[exists] = walletEntry;
+        else db.walletTx.unshift(walletEntry);
+      });
+    }
+  } catch {
+    // best-effort — balance will refresh on next full hydration
+  }
+
   return conv;
 }
 
