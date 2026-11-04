@@ -269,21 +269,6 @@ Deno.serve(async (req) => {
       return json({ error: `Minimum conversion is ${cfg.minConversionGold} gold coins.` }, 400);
     }
 
-    // Check daily limit
-    if (cfg.maxDailyConversions > 0) {
-      const dayStart = new Date();
-      dayStart.setHours(0, 0, 0, 0);
-      const { count: todayCount } = await svc
-        .from("gold_mine_conversions")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", user.id)
-        .neq("status", "rejected")
-        .gte("created_at", dayStart.toISOString());
-      if ((todayCount ?? 0) >= cfg.maxDailyConversions) {
-        return json({ error: "You've reached your daily conversion limit. Try again tomorrow." }, 400);
-      }
-    }
-
     // Check gold balance
     const balance = await getGoldBalance(user.id);
     if (balance < goldAmount) {
