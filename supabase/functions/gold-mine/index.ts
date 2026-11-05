@@ -35,9 +35,9 @@ Deno.serve(async (req) => {
 
   const svc = createClient(supabaseUrl, serviceRoleKey);
 
-  // Load settings
-  const { data: settingsRow } = await svc.from("settings").select("value").eq("key", "config").maybeSingle();
-  const cfg = settingsRow?.value?.goldMine ?? {
+  // Load settings from platform_settings (the actual config table)
+  const { data: settingsRow } = await svc.from("platform_settings").select("payload").eq("id", true).maybeSingle();
+  const cfg = settingsRow?.payload?.goldMine ?? {
     enabled: true,
     goldToCashRate: 10,
     minConversionGold: 50,
