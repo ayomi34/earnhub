@@ -295,9 +295,10 @@ Deno.serve(async (req) => {
     if (convErr) return json({ error: `Failed to submit conversion: ${convErr.message}` }, 500);
 
     // Auto-approve: credit the cash amount to the user's NGN wallet immediately
+    const walletTxId = crypto.randomUUID();
     const walletTxRef = `EH-GM-CASH-${Date.now().toString(36).toUpperCase()}`;
-    await svc.from("wallet_transactions").insert({
-      id: crypto.randomUUID(),
+    const { data: walletTx } = await svc.from("wallet_transactions").insert({
+      id: walletTxId,
       user_id: user.id,
       type: "gold_conversion",
       direction: "credit",
@@ -306,7 +307,7 @@ Deno.serve(async (req) => {
       description: `Gold conversion — ${goldAmount} ZNTR → ₦${cashAmount.toLocaleString()} (${cfg.conversionFeePercent}% fee applied)`,
       reference: walletTxRef,
       source_id: conversionId,
-    });
+    }).select().maybeSingle();
 
     await svc.from("notifications").insert({
       id: crypto.randomUUID(), user_id: user.id, type: "system",
@@ -316,7 +317,7 @@ Deno.serve(async (req) => {
     });
 
     const newBalance = await getGoldBalance(user.id);
-    return json({ conversion, goldBalance: newBalance });
+    return json({ conversion, walletTx, goldBalance: newBalance });
   }
 
   return json({ error: "Unknown action" }, 400);
