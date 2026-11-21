@@ -193,7 +193,7 @@ export function Transactions() {
       }));
     const wallet = getWalletTx(user.id).map((t): TxRow => ({
       id: t.id, date: t.createdAt,
-      type: (({ task_reward: "Task Reward", referral_bonus: "Referral Bonus", withdrawal: "Withdrawal", refund: "Refund", adjustment: "Adjustment", spin_reward: "Spin Reward", feud_reward: "Survey Feud Reward", membership_commission: "Membership Commission", gold_mine_join: "Gold Mine Join Fee", gold_mine_conversion: "Gold Conversion" } as const)[t.type] || "Reward"),
+      type: (({ task_reward: "Task Reward", referral_bonus: "Referral Bonus", withdrawal: "Withdrawal", refund: "Refund", adjustment: "Adjustment", spin_reward: "Spin Reward", feud_reward: "Survey Feud Reward", membership_commission: "Membership Commission", gold_mine_join: "Zentra Join Fee", gold_mine_conversion: "Gold Conversion" } as const)[t.type] || "Reward"),
       desc: t.description, amount: t.amount, credit: t.direction === "credit",
       status: t.status, reference: t.reference,
     }));
@@ -332,13 +332,13 @@ export function Referrals() {
         <Card>
           <CardHeader
             title="Zentra Mining Commissions"
-            sub={`${stats.zentraEarned} ZNTR earned — credited to your gold balance`}
+            sub={`${stats.zentraEarned} ZNTR earned — credited to your ZNTR balance`}
           />
           {zentraCommissions.length === 0 ? (
             <EmptyState
               icon={<Coins className="h-5 w-5" />}
               title="No Zentra commissions yet"
-              sub="You earn ZNTR gold coins whenever an active referral completes a Gold Mine cycle."
+              sub="You earn ZNTR gold coins whenever an active referral completes a Zentra cycle."
             />
           ) : (
             <Table head={["Date", "Description", "Amount", "Status"]}>

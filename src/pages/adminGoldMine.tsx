@@ -21,7 +21,7 @@ function statusBadge(status: string) {
   return <Badge tone="amber">Pending</Badge>;
 }
 
-/* ── Admin Gold Mine page ─────────────────────────────────────────────── */
+/* ── Admin Zentra page ─────────────────────────────────────────────── */
 
 type AdminTab = "conversions" | "cycles" | "settings";
 
