@@ -7,8 +7,7 @@ import { useData, useSettings, useUser } from "../lib/store";
 import { read } from "../lib/db";
 import {
   adminGetAllConversions, adminGetAllGoldMineCycles,
-  adminApproveConversion, adminRejectConversion,
-  adminSaveSettings,
+  adminApproveConversion, adminRejectConversion, adminSaveSettings,
 } from "../lib/services";
 import { Badge, Button, Modal, fmtN } from "../components/ui";
 import type { GoldMineConversion, GoldMineCycle, GoldMineLevelConfig } from "../lib/types";
@@ -65,14 +64,13 @@ export function AdminGoldMine() {
 
   const handleApprove = async (conv: GoldMineConversion) => {
     if (!user) return;
-    setError(""); setSuccess("");
-    setActionId(conv.id);
+    setError(""); setSuccess(""); setActionId(conv.id);
     try {
       await adminApproveConversion(user.id, conv.id);
       setConversions((prev) => prev.map((c) => c.id === conv.id ? { ...c, status: "approved" as const } : c));
-      setSuccess(`Approved ${conv.goldAmount} ZNTR → ${fmtN(conv.cashAmount)} for user.`);
+      setSuccess(`Approved ${conv.goldAmount} ZNTR → ${fmtN(conv.cashAmount)} and credited the wallet.`);
     } catch (e: any) {
-      setError(e.message);
+      setError(e.message || "Could not approve conversion.");
     } finally {
       setActionId(null);
     }
@@ -80,16 +78,14 @@ export function AdminGoldMine() {
 
   const handleReject = async () => {
     if (!user || !rejectModal) return;
-    setError("");
-    setActionId(rejectModal.id);
+    setError(""); setActionId(rejectModal.id);
     try {
       await adminRejectConversion(user.id, rejectModal.id, rejectNote.trim());
-      setConversions((prev) => prev.map((c) => c.id === rejectModal.id ? { ...c, status: "rejected" as const, note: rejectNote } : c));
-      setRejectModal(null);
-      setRejectNote("");
-      setSuccess("Conversion rejected.");
+      setConversions((prev) => prev.map((c) => c.id === rejectModal.id
+        ? { ...c, status: "rejected" as const, note: rejectNote.trim() } : c));
+      setRejectModal(null); setRejectNote(""); setSuccess("Conversion rejected; reserved ZNTR has been restored.");
     } catch (e: any) {
-      setError(e.message);
+      setError(e.message || "Could not reject conversion.");
     } finally {
       setActionId(null);
     }
@@ -132,11 +128,9 @@ export function AdminGoldMine() {
       <div className="flex items-center gap-3">
         <div>
           <h1 className="text-[20px] font-bold text-slate-900">Zentra Admin</h1>
-          <p className="mt-0.5 text-sm text-slate-500">Manage cycles, conversions, and configuration</p>
+          <p className="mt-0.5 text-sm text-slate-500">Review conversions, cycles, and configuration</p>
         </div>
-        {pendingConversions.length > 0 && (
-          <Badge tone="amber">{pendingConversions.length} pending</Badge>
-        )}
+        {pendingConversions.length > 0 && <Badge tone="amber">{pendingConversions.length} pending</Badge>}
       </div>
 
       {error && (
@@ -200,23 +194,16 @@ export function AdminGoldMine() {
                     {conv.feeAmount > 0 && ` · Fee: ${fmtN(conv.feeAmount)}`}
                   </p>
                   {conv.note && <p className="mt-1 text-xs text-red-500">{conv.note}</p>}
+                  {conv.status === "approved" && <p className="mt-1 text-xs text-green-700">Credited to the wallet.</p>}
                 </div>
                 {conv.status === "pending" && (
                   <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      onClick={() => handleApprove(conv)}
-                      disabled={actionId === conv.id}
-                    >
+                    <Button size="sm" onClick={() => void handleApprove(conv)} disabled={actionId === conv.id}>
                       {actionId === conv.id ? <RefreshCw className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
                       Approve
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="border-red-200 text-red-600 hover:bg-red-50"
-                      onClick={() => { setRejectModal(conv); setRejectNote(""); }}
-                    >
+                    <Button size="sm" variant="outline" className="border-red-200 text-red-600 hover:bg-red-50"
+                      onClick={() => { setRejectModal(conv); setRejectNote(""); }} disabled={actionId === conv.id}>
                       <X className="h-3 w-3" /> Reject
                     </Button>
                   </div>
@@ -384,27 +371,22 @@ export function AdminGoldMine() {
         </div>
       )}
 
-      {/* Reject modal */}
+      {/* Reject conversion modal */}
       <Modal open={!!rejectModal} onClose={() => setRejectModal(null)} title="Reject Conversion">
         {rejectModal && (
           <div className="space-y-4">
             <p className="text-sm text-slate-600">
-              Reject conversion of <strong>{rejectModal.goldAmount} ZNTR</strong> (≈ {fmtN(rejectModal.cashAmount)}) — the user's ZNTR balance will be restored.
+              Reject conversion of <strong>{rejectModal.goldAmount} ZNTR</strong> (≈ {fmtN(rejectModal.cashAmount)}). The reserved ZNTR will be restored.
             </p>
             <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">Reason (optional)</label>
-              <textarea
-                rows={3}
-                value={rejectNote}
-                onChange={(e) => setRejectNote(e.target.value)}
-                placeholder="e.g. Daily limit exceeded"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
-              />
+              <label className="mb-1 block text-xs font-medium text-slate-700">Reason (optional)</label>
+              <textarea rows={3} value={rejectNote} onChange={(e) => setRejectNote(e.target.value)}
+                placeholder="Reason for rejection"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand" />
             </div>
             <div className="flex gap-2">
-              <Button className="flex-1 bg-red-500 hover:bg-red-600" onClick={handleReject} disabled={!!actionId}>
-                {actionId ? <RefreshCw className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
-                Reject
+              <Button className="flex-1 bg-red-500 hover:bg-red-600" onClick={() => void handleReject()} disabled={!!actionId}>
+                {actionId ? <RefreshCw className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />} Reject
               </Button>
               <Button variant="outline" className="flex-1" onClick={() => setRejectModal(null)}>Cancel</Button>
             </div>
