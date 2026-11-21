@@ -385,7 +385,7 @@ export function GoldMinePage() {
     setSuccess("");
     setLoading(true);
     try {
-      await joinGoldMineCycle(user.id);
+      await joinGoldMineCycle();
       setSuccess("Zentra cycle activated! Your ZNTR will be credited when the cycle completes.");
     } catch (e: any) {
       setError(e.message || "Failed to activate cycle.");
@@ -401,10 +401,10 @@ export function GoldMinePage() {
     setError("");
     setLoading(true);
     try {
-      await requestGoldConversion(user.id, amt);
+      await requestGoldConversion(amt);
       setConvModal(false);
       setGoldInput("");
-      setSuccess("Conversion approved! Your NGN has been credited to your wallet.");
+      setSuccess("Conversion request submitted. Your ZNTR is reserved while an admin reviews it.");
     } catch (e: any) {
       setError(e.message || "Conversion failed.");
     } finally {

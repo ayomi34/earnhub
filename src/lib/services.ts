@@ -1,12 +1,11 @@
 import { read, update, uid, genRef, DEFAULT_SPIN_CONFIG, DEFAULT_GOLD_MINE_CONFIG } from "./db";
-import { supabase, REQUIRE_EMAIL_CONFIRMATION } from "./supabase";
+import { supabase } from "./supabase";
 import type {
   Balances, MembershipLevel, Notification, Payment, Profile, Settings,
   SupportTicket, Task, TaskSubmission, Withdrawal, WalletTx,
   Referral, AuditLog, Membership, SpinConfig, SpinReward, SpinRewardType, SpinWinner,
   GoldMineCycle, GoldMineConversion, ReferralCommission,
 } from "./types";
-import { DEFAULT_REFERRAL_COMMISSION_CONFIG } from "./types";
 
 /* EarnHub service layer — Supabase is the single source of truth.
  * Every mutation writes to the database first; the in-memory cache is
@@ -30,10 +29,8 @@ function mapProfile(row: any, fallbackUser?: SessionUser): Profile | null {
     phone: row.phone || "",
     passwordHash: "",
     status: row.status || "active",
-    // With confirmation disabled (pre-domain), every account is treated as verified.
-    emailVerified: REQUIRE_EMAIL_CONFIRMATION
-      ? Boolean(fallbackUser?.email_confirmed_at ?? row.email_verified)
-      : true,
+    // Never treat an account as verified unless Supabase confirms it.
+    emailVerified: Boolean(fallbackUser?.email_confirmed_at ?? row.email_verified),
     verifyCode: null,
     resetCode: null,
     referralCode: row.referral_code || "",
@@ -227,217 +224,32 @@ export interface SpinOutcome {
   nextSpinAt: number;
 }
 
-/** Direct evaluation fallback when the daily-spin Edge Function is not yet deployed to Supabase.
- *  Enforces the exact same rate limits, eligibility checks, and weighted probabilities. */
-async function executeDirectSpin(userId: string): Promise<SpinOutcome> {
-  const db = read();
-  const cfg = db.settings.spin || DEFAULT_SPIN_CONFIG;
-
-  if (!cfg.enabled) {
-    throw new SvcError("The daily spin is currently unavailable.");
-  }
-
-  const user = db.profiles.find((p) => p.id === userId);
-  if (!user) throw new SvcError("Profile not found.");
-  if (user.status !== "active") throw new SvcError("This account has been suspended.");
-
-  if (cfg.requireVerified && REQUIRE_EMAIL_CONFIRMATION && !user.emailVerified) {
-    throw new SvcError("Verify your email address to unlock the daily spin.");
-  }
-
-  const hasActive = db.memberships.some((m) => m.userId === userId && m.status === "active");
-  if (!hasActive) throw new SvcError("An active membership is required to spin.");
-
-  const DAY_MS = 24 * 60 * 60 * 1000;
-  const userSpins = db.spins
-    .filter((s) => s.userId === userId)
-    .sort((a, b) => b.createdAt - a.createdAt);
-  const lastSpin = userSpins[0];
-  if (lastSpin && Date.now() - lastSpin.createdAt < DAY_MS) {
-    const waitMs = DAY_MS - (Date.now() - lastSpin.createdAt);
-    const hours = Math.floor(waitMs / (60 * 60 * 1000));
-    const mins = Math.floor((waitMs % (60 * 60 * 1000)) / (60 * 1000));
-    throw new SvcError(`Your next free spin is ready in ${hours}h ${mins}m.`);
-  }
-
-  const dayStart = new Date();
-  dayStart.setHours(0, 0, 0, 0);
-  const awardedToday = db.spins
-    .filter((s) => s.rewardType === "cash" && s.status !== "rejected" && s.createdAt >= dayStart.getTime())
-    .reduce((sum, s) => sum + s.amount, 0);
-  if (cfg.dailyBudget > 0 && awardedToday >= cfg.dailyBudget) {
-    throw new SvcError("Today's reward budget has been reached. Come back tomorrow!");
-  }
-
-  const segments = cfg.segments;
-  const totalWeight = segments.reduce((sum, s) => sum + Math.max(1, s.weight), 0);
-  const buf = new Uint32Array(1);
-  crypto.getRandomValues(buf);
-  let roll = (buf[0] / 4294967296) * totalWeight;
-  let segmentIndex = segments.length - 1;
-  for (let i = 0; i < segments.length; i++) {
-    roll -= Math.max(1, segments[i].weight);
-    if (roll < 0) {
-      segmentIndex = i;
-      break;
-    }
-  }
-
-  const segment = segments[segmentIndex];
-  const rewardType: SpinRewardType = segment.type;
-  const amount = rewardType === "cash" ? Math.max(0, segment.amount) : 0;
-  const status = rewardType === "cash" ? "approved" : rewardType === "bonus_task" ? "approved" : "none";
-  const reference = `EH-SPIN-${Date.now().toString(36).toUpperCase()}${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
-
-  const spinRecord: SpinReward = {
-    id: crypto.randomUUID(),
-    userId,
-    segmentIndex,
-    label: segment.label,
-    rewardType,
-    amount,
-    status,
-    reference,
-    createdAt: Date.now(),
-    ip: null,
-    userAgent: null,
-  };
-
-  let walletTx: WalletTx | null = null;
-  if (rewardType === "cash" && amount > 0) {
-    walletTx = {
-      id: crypto.randomUUID(),
-      userId,
-      type: "spin_reward",
-      direction: "credit",
-      amount,
-      status: "approved",
-      description: "Daily spin reward",
-      reference,
-      sourceId: spinRecord.id,
-      createdAt: Date.now(),
-    };
-  }
-
-  const { error: spinInsertError } = await supabase.from("spins").insert({
-    id: spinRecord.id,
-    user_id: spinRecord.userId,
-    segment_index: spinRecord.segmentIndex,
-    label: spinRecord.label,
-    reward_type: spinRecord.rewardType,
-    amount: spinRecord.amount,
-    status: spinRecord.status,
-    reference: spinRecord.reference,
-  });
-  if (spinInsertError) {
-    throw new SvcError(`Failed to record spin: ${spinInsertError.message}`);
-  }
-
-  if (walletTx) {
-    const { error: txInsertError } = await supabase.from("wallet_transactions").insert({
-      id: walletTx.id,
-      user_id: walletTx.userId,
-      type: walletTx.type,
-      direction: walletTx.direction,
-      amount: walletTx.amount,
-      status: walletTx.status,
-      description: walletTx.description,
-      reference: walletTx.reference,
-      source_id: walletTx.sourceId,
-    });
-    if (txInsertError) {
-      // Spin is already recorded; log the wallet credit failure but don't block the result.
-      console.error("[executeDirectSpin] wallet_transactions insert failed:", txInsertError.message);
-    }
-  }
-
-  const notifId = crypto.randomUUID();
-  const notifTitle = rewardType === "cash" && amount > 0 ? "Daily spin reward" : "Daily spin";
-  const notifBody = rewardType === "cash" && amount > 0
-    ? `You won ${segment.label} on the daily spin! Reference ${reference}. The reward has been credited to your wallet.`
-    : rewardType === "bonus_task"
-    ? "You won a bonus task slot on the daily spin."
-    : "No reward this time — your next free spin is available in 24 hours.";
-
-  update((state) => {
-    state.spins = [spinRecord, ...state.spins.filter((s) => s.id !== spinRecord.id)];
-    if (walletTx) {
-      state.walletTx = [walletTx, ...state.walletTx.filter((t) => t.id !== walletTx!.id)];
-    }
-    state.notifications = [
-      { id: notifId, userId, type: "system", title: notifTitle, body: notifBody, read: false, createdAt: Date.now() },
-      ...state.notifications,
-    ];
-  });
-
-  // Persist to DB so the notification survives reload; best-effort fire-and-forget.
-  // The Realtime handler deduplicates by id so the UI won't double-show it.
-  supabase.from("notifications").insert({
-    id: notifId, user_id: userId, type: "system",
-    title: notifTitle, body: notifBody, read: false,
-  }).then(({ error: e }) => {
-    if (e) console.warn("[executeDirectSpin] Could not persist notification:", e.message);
-  });
-
-  return { spin: spinRecord, nextSpinAt: Date.now() + DAY_MS };
-}
-
-/** Calls the daily-spin edge function if deployed, otherwise falls back seamlessly
- *  to the direct handler with the same rate limits and weighted probabilities. */
+/** Spin results and wallet credits are server-authoritative. If the Edge Function is
+ * unavailable, fail closed rather than creating rewards from browser-controlled state. */
 export async function spinWheel(userId: string): Promise<SpinOutcome> {
-  let data: any = null;
-  let error: any = null;
-  let edgeAttempted = false;
-
-  try {
-    const res = await supabase.functions.invoke("daily-spin", { body: {} });
-    data = res.data;
-    error = res.error;
-    edgeAttempted = true;
-  } catch (e: any) {
-    console.warn("[daily-spin] invoke threw network error, switching to direct handler:", e);
+  const { data, error } = await supabase.functions.invoke("daily-spin", { body: {} });
+  if (error) {
+    const ctx: any = (error as any)?.context;
+    let serverMsg = "";
+    try {
+      const ctxJson = ctx && typeof ctx.json === "function" ? await ctx.json().catch(() => null) : ctx;
+      serverMsg = (ctxJson as any)?.error || "";
+    } catch { /* ignore */ }
+    throw new SvcError(serverMsg || error.message || "Daily spin is temporarily unavailable. Please try again.");
   }
-
-  const isEdgeUnreachable =
-    !edgeAttempted ||
-    (error && (
-      String(error.message || "").includes("Failed to send a request") ||
-      String(error.message || "").includes("not found") ||
-      String(error.name || "") === "FunctionsFetchError" ||
-      (error as any)?.context?.status === 404
-    ));
-
-  if (edgeAttempted && !isEdgeUnreachable) {
-    if (error) {
-      console.error("[daily-spin] invoke error:", error);
-      const ctx: any = (error as any)?.context;
-      let serverMsg = "";
-      try {
-        const ctxJson = ctx && typeof ctx.json === "function" ? await ctx.json().catch(() => null) : ctx;
-        serverMsg = (ctxJson as any)?.error || (typeof ctxJson === "string" ? ctxJson : "");
-      } catch { /* ignore */ }
-      const msg = serverMsg || (error as any)?.message || "Spin failed";
-      throw new SvcError(String(msg));
+  if (!data?.spin) throw new SvcError(data?.error || "Spin failed — please try again.");
+  const spin = mapSpin(data.spin);
+  update((db) => {
+    db.spins = [spin, ...db.spins.filter((s) => s.id !== spin.id)];
+    if (data.walletTx) {
+      const tx = mapWalletTx(data.walletTx);
+      const existing = db.walletTx.findIndex((t) => t.id === tx.id);
+      if (existing >= 0) db.walletTx[existing] = tx;
+      else db.walletTx.unshift(tx);
     }
-    if (!data?.spin) throw new SvcError("Spin failed — please try again.");
-    const spin = mapSpin(data.spin);
-
-    update((db) => {
-      db.spins = [spin, ...db.spins.filter((s) => s.id !== spin.id)];
-      if (data.walletTx) {
-        const tx = mapWalletTx(data.walletTx);
-        const existing = db.walletTx.findIndex((t) => t.id === tx.id);
-        if (existing >= 0) db.walletTx[existing] = tx;
-        else db.walletTx.unshift(tx);
-      }
-      db.session = { userId };
-    });
-
-    return { spin, nextSpinAt: new Date(data.nextSpinAt || Date.now() + 86_400_000).getTime() };
-  }
-
-  // Fallback: direct evaluation when Edge Function is not yet deployed
-  return executeDirectSpin(userId);
+    db.session = { userId };
+  });
+  return { spin, nextSpinAt: new Date(data.nextSpinAt || Date.now() + 86_400_000).getTime() };
 }
 
 /** Anonymized winners — masked in Postgres via recent_spin_winners(), or derived from spin records. */
@@ -651,8 +463,9 @@ export async function hydrateAll() {
   await hydrateContentFromSupabase();
 
   const { data: { session } } = await supabase.auth.getSession();
-  const userId = session?.user?.id ?? null;
-  if (!userId) {
+  const sessionUser = session?.user ?? null;
+  const userId = sessionUser?.id ?? null;
+  if (!sessionUser || !userId) {
     unsubscribeFromNotifications();
     update((db) => {
       db.session = null;
@@ -696,7 +509,7 @@ export async function hydrateAll() {
     db.session = { userId };
     if (Array.isArray(profiles.data)) {
       db.profiles = profiles.data
-        .map((row) => mapProfile(row))
+        .map((row) => mapProfile(row, row.id === userId ? sessionUser : undefined))
         .filter((p): p is Profile => !!p);
     }
     if (Array.isArray(payments.data)) db.payments = payments.data.map(mapPayment);
@@ -1652,9 +1465,9 @@ export function getGoldBalance(userId: string): number {
 }
 
 /** Join a new gold mine cycle (calls edge function). */
-export async function joinGoldMineCycle(userId: string): Promise<GoldMineCycle> {
+export async function joinGoldMineCycle(): Promise<GoldMineCycle> {
   const { data, error } = await supabase.functions.invoke("gold-mine", {
-    body: { action: "join-cycle" },
+    body: { action: "join-cycle", requestId: crypto.randomUUID() },
   });
   if (error) {
     const ctx: any = (error as any)?.context;
@@ -1687,9 +1500,9 @@ export async function completeMatureCycles(userId: string): Promise<GoldMineCycl
 }
 
 /** Request a gold-to-cash conversion. */
-export async function requestGoldConversion(userId: string, goldAmount: number): Promise<GoldMineConversion> {
+export async function requestGoldConversion(goldAmount: number): Promise<GoldMineConversion> {
   const { data, error } = await supabase.functions.invoke("gold-mine", {
-    body: { action: "request-conversion", goldAmount },
+    body: { action: "request-conversion", goldAmount, requestId: crypto.randomUUID() },
   });
   if (error) {
     const ctx: any = (error as any)?.context;
@@ -1703,8 +1516,8 @@ export async function requestGoldConversion(userId: string, goldAmount: number):
   if (!data?.conversion) throw new SvcError("Conversion request failed — please try again.");
   const conv = mapGoldMineConversion(data.conversion);
 
-  // The edge function returns the wallet_transactions row it created.
-  // Push both into the local store so the NGN balance updates immediately.
+  // A request reserves ZNTR but does not credit NGN until an admin approves it.
+  // If an idempotent retry returns an already-approved request, refresh that ledger row too.
   update((db) => {
     db.goldMineConversions = [conv, ...db.goldMineConversions.filter((c) => c.id !== conv.id)];
     if (data.walletTx) {
@@ -1732,54 +1545,16 @@ export async function adminGetAllConversions(adminId: string): Promise<GoldMineC
   return (data ?? []).map(mapGoldMineConversion);
 }
 
-/** Admin: approve a conversion — credits user's wallet. */
+/** Review pending conversion through the admin-verified Edge Function. */
 export async function adminApproveConversion(adminId: string, conversionId: string): Promise<void> {
   requireAdmin(adminId);
-  // Fetch conversion details
-  const { data: row } = await supabase.from("gold_mine_conversions").select("*").eq("id", conversionId).maybeSingle();
-  if (!row) throw new SvcError("Conversion not found.");
-  if (row.status !== "pending") throw new SvcError("Only pending conversions can be approved.");
-
-  const txId = uid();
-  const { error: txErr } = await supabase.from("wallet_transactions").insert({
-    id: txId, user_id: row.user_id, type: "gold_mine_conversion",
-    direction: "credit", amount: row.cash_amount, status: "approved",
-    description: `Zentra conversion — ${row.gold_amount} ZNTR`,
-    reference: row.reference, source_id: conversionId,
-  });
-  if (txErr) throw new SvcError(`Failed to credit wallet: ${txErr.message}`);
-
-  const { error: updErr } = await supabase.from("gold_mine_conversions")
-    .update({ status: "approved", processed_at: new Date().toISOString() })
-    .eq("id", conversionId);
-  if (updErr) throw new SvcError(`Failed to update conversion: ${updErr.message}`);
-
-  await supabase.from("notifications").insert({
-    id: uid(), user_id: row.user_id, type: "system",
-    title: "ZNTR conversion approved",
-    body: `Your conversion of ${row.gold_amount} ZNTR to ₦${row.cash_amount.toLocaleString()} has been approved and credited to your wallet.`,
-    read: false,
-  });
+  await invokeAdmin("approve-gold-conversion", { conversionId });
 }
 
-/** Admin: reject a conversion — gold is returned. */
+/** Reject a pending conversion through the admin-verified Edge Function. */
 export async function adminRejectConversion(adminId: string, conversionId: string, note: string): Promise<void> {
   requireAdmin(adminId);
-  const { data: row } = await supabase.from("gold_mine_conversions").select("*").eq("id", conversionId).maybeSingle();
-  if (!row) throw new SvcError("Conversion not found.");
-  if (row.status !== "pending") throw new SvcError("Only pending conversions can be rejected.");
-
-  const { error } = await supabase.from("gold_mine_conversions")
-    .update({ status: "rejected", note, processed_at: new Date().toISOString() })
-    .eq("id", conversionId);
-  if (error) throw new SvcError(`Failed to reject conversion: ${error.message}`);
-
-  await supabase.from("notifications").insert({
-    id: uid(), user_id: row.user_id, type: "system",
-    title: "ZNTR conversion rejected",
-    body: `Your conversion request for ${row.gold_amount} ZNTR was not approved. ${note ? `Reason: ${note}` : "Contact support for more information."} Your ZNTR balance has been restored.`,
-    read: false,
-  });
+  await invokeAdmin("reject-gold-conversion", { conversionId, note });
 }
 
 /** Fetch Zentra leaderboard from Supabase RPC. */

@@ -6,8 +6,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
  *  - refresh / new device / second browser -> same account row in `spins`
  *  - direct API calls -> every eligibility rule re-verified here
  *  - tampering with the frontend -> irrelevant, client only visualizes
- * Cash rewards are recorded as PENDING wallet credits; an admin approves
- * them from the dashboard before they become withdrawable. */
+ * Cash rewards and wallet credits are committed together by a service-role
+ * database RPC after the eligibility, cooldown, and budget checks pass. */
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,8 +16,6 @@ const corsHeaders = {
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 /* Mirrors DEFAULT_SPIN_CONFIG in src/lib/db.ts — used when the platform
  * settings row has no spin section yet. */
@@ -74,6 +72,9 @@ Deno.serve(async (req) => {
     ...((settingsRow?.payload as any)?.spin ?? {}),
   };
   if (cfg.enabled !== true) return json({ error: "The daily spin is currently unavailable." }, 403);
+  const dailyBudget = Number(cfg.dailyBudget);
+  if (!Number.isSafeInteger(dailyBudget) || dailyBudget < 0)
+    return json({ error: "The wheel is misconfigured. Contact support." }, 500);
   if (!Array.isArray(cfg.segments) || cfg.segments.length < 2 || cfg.segments.length > 12)
     return json({ error: "The wheel is misconfigured. Contact support." }, 500);
   const validSegments = cfg.segments.every((seg: any) =>
@@ -87,32 +88,6 @@ Deno.serve(async (req) => {
 
   if (cfg.requireVerified === true && !user.email_confirmed_at)
     return json({ error: "Verify your email address to unlock the daily spin." }, 403);
-
-  /* ---------- one spin per 24h (server-enforced) ---------- */
-  const { data: lastSpin } = await admin
-    .from("spins").select("created_at").eq("user_id", user.id)
-    .order("created_at", { ascending: false }).limit(1).maybeSingle();
-  let lastNextSpinAt: string | null = null;
-  if (lastSpin) {
-    const last = new Date(lastSpin.created_at).getTime();
-    lastNextSpinAt = new Date(last + DAY_MS).toISOString();
-    if (Date.now() - last < DAY_MS)
-      return json({ error: "Your next free spin is not ready yet.", nextSpinAt: lastNextSpinAt }, 429);
-  }
-
-  /* ---------- platform-wide daily budget ---------- */
-  const dayStart = new Date();
-  dayStart.setUTCHours(0, 0, 0, 0);
-  const { data: todays } = await admin
-    .from("spins")
-    .select("amount")
-    .eq("reward_type", "cash")
-    .in("status", ["pending", "approved"])
-    .gte("created_at", dayStart.toISOString());
-  const dailyBudget = Number(cfg.dailyBudget);
-  const awardedToday = (todays ?? []).reduce((s: number, r: any) => s + Number(r.amount || 0), 0);
-  if (dailyBudget > 0 && awardedToday >= dailyBudget)
-    return json({ error: "Today's reward budget has been reached. Come back tomorrow!" }, 429);
 
   /* ---------- secure weighted random result ---------- */
   const segments: any[] = cfg.segments;
@@ -129,60 +104,28 @@ Deno.serve(async (req) => {
   const segment = segments[segmentIndex];
   const rewardType = ["cash", "bonus_task", "none"].includes(segment?.type) ? segment.type : "none";
   const amount = rewardType === "cash" ? Math.max(0, Math.floor(Number(segment.amount || 0))) : 0;
-  const status = rewardType === "cash" ? "approved" : rewardType === "bonus_task" ? "approved" : "none";
   const reference = `EH-SPIN-${Date.now().toString(36).toUpperCase()}${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
 
-  /* ---------- record spin (audit: ip + user agent) ---------- */
+  /* All limits and writes execute under a database lock in one transaction.
+   * This prevents parallel requests from double-spinning or exceeding budget. */
   const ip = (req.headers.get("x-forwarded-for") || "").split(",")[0].trim() || null;
   const userAgent = (req.headers.get("user-agent") || "").slice(0, 200) || null;
-  const { data: spin, error: spinError } = await admin.from("spins").insert({
-    user_id: user.id,
-    segment_index: segmentIndex,
-    label: String(segment.label ?? "—"),
-    reward_type: rewardType,
-    amount,
-    status,
-    reference,
-    ip,
-    user_agent: userAgent,
-  }).select().single();
-  if (spinError || !spin) return json({ error: spinError?.message || "Could not record the spin" }, 500);
-
-  /* ---------- cash -> automatically credited to wallet ---------- */
-  let walletTx = null;
-  if (rewardType === "cash" && amount > 0) {
-    const { data: tx } = await admin.from("wallet_transactions").insert({
-      user_id: user.id,
-      type: "spin_reward",
-      direction: "credit",
-      amount,
-      status: "approved",
-      description: "Daily spin reward",
-      reference,
-      source_id: spin.id,
-    }).select().single();
-    walletTx = tx ?? null;
+  const { data: result, error: commitError } = await admin.rpc("commit_daily_spin", {
+    p_user_id: user.id,
+    p_segment_index: segmentIndex,
+    p_label: String(segment.label ?? "—"),
+    p_reward_type: rewardType,
+    p_amount: amount,
+    p_reference: reference,
+    p_require_verified: cfg.requireVerified === true,
+    p_daily_budget: dailyBudget,
+    p_ip: ip,
+    p_user_agent: userAgent,
+  });
+  if (commitError) {
+    console.error("[daily-spin] atomic commit failed:", commitError.message);
+    return json({ error: "Could not securely record your spin. Please try again." }, 500);
   }
-
-  await admin.from("notifications").insert({
-    user_id: user.id,
-    type: "system",
-    title: rewardType === "cash" && amount > 0 ? "Daily spin reward" : "Daily spin",
-    body: rewardType === "cash" && amount > 0
-      ? `You won ${segment.label} on the daily spin! Reference ${reference}. The reward has been credited directly to your wallet.`
-      : rewardType === "bonus_task"
-      ? "You won a bonus task slot on the daily spin. One extra task is available to you today."
-      : "No reward this time — your next free spin is available in 24 hours.",
-  });
-
-  return json({
-    spin,
-    walletTx,
-    segmentIndex,
-    label: segment.label,
-    rewardType,
-    amount,
-    reference,
-    nextSpinAt: new Date(Date.now() + DAY_MS).toISOString(),
-  });
+  if (result?.error) return json({ error: result.error }, Number(result.status) || 400);
+  return json(result);
 });

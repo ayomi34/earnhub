@@ -387,7 +387,7 @@ export function Register() {
 
   const next = async () => {
     if (submittingRef.current) return;
-    const e: Partial<RegData> & { referralCode?: string } = {};
+    const e: Partial<RegData> & { referralCode?: string; agreed?: string } = {};
     if (!refCode.trim()) e.referralCode = "Enter the referral code of the member who invited you";
     if (form.fullName.trim().length < 3) e.fullName = "Enter your full legal name";
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = "Enter a valid email";

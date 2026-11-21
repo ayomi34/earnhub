@@ -32,8 +32,10 @@ Deno.serve(async (req) => {
   const { data: { user }, error: authError } = await authClient.auth.getUser();
   if (authError || !user) return json({ error: "Invalid session" }, 401);
 
-  const { reference } = await req.json();
-  if (!reference) return json({ error: "Payment reference is required" }, 400);
+  let body: any;
+  try { body = await req.json(); } catch { return json({ error: "Invalid JSON body" }, 400); }
+  const reference = typeof body?.reference === "string" ? body.reference.trim() : "";
+  if (!reference || reference.length > 128) return json({ error: "Payment reference is required" }, 400);
 
   const admin = createClient(supabaseUrl, serviceRoleKey);
   const { data: payment, error: paymentError } = await admin
@@ -48,12 +50,13 @@ Deno.serve(async (req) => {
     const { data: existingMembership } = await admin
       .from("memberships").select("*").eq("payment_id", payment.id).maybeSingle();
     if (existingMembership) {
-      if (existingMembership.status === "active") {
-        const { error: linkError } = await admin.from("profiles")
-          .update({ membership_id: existingMembership.id }).eq("id", user.id);
-        if (linkError) return json({ error: linkError.message }, 500);
-      }
-      return json({ payment, membership: existingMembership });
+      const { data: fulfillment, error: fulfillmentError } = await admin.rpc("fulfill_verified_payment", {
+        p_payment_id: payment.id,
+        p_user_id: user.id,
+      });
+      if (fulfillmentError) return json({ error: "Could not restore the membership link. Please retry." }, 500);
+      if (fulfillment?.error) return json({ error: fulfillment.error }, Number(fulfillment.status) || 400);
+      return json({ payment: fulfillment.payment, membership: fulfillment.membership });
     }
   }
 
@@ -70,7 +73,8 @@ Deno.serve(async (req) => {
   const gateway = await gatewayResponse.json();
   const transaction = gateway?.data;
   const amountMatches = Number(transaction?.amount) === Number(level.price) * 100;
-  if (!gatewayResponse.ok || !gateway?.status || transaction?.status !== "success" || !amountMatches) {
+  const currencyMatches = transaction?.currency === "NGN";
+  if (!gatewayResponse.ok || !gateway?.status || transaction?.status !== "success" || !amountMatches || !currencyMatches) {
     const { data: failedPayment } = await admin.from("payments").update({
       status: "failed",
       gateway_status: transaction?.status || "failed",
@@ -78,115 +82,18 @@ Deno.serve(async (req) => {
     return json({ error: "Paystack could not verify this payment", payment: failedPayment || payment }, 400);
   }
 
-  const { data: verifiedPayment, error: updateError } = await admin.from("payments").update({
-    status: "success",
-    gateway_status: "success",
-    verified_at: new Date().toISOString(),
-  }).eq("id", payment.id).select().single();
-  if (updateError) return json({ error: updateError.message }, 500);
-
-  await admin.from("memberships").update({ status: "expired" })
-    .eq("user_id", user.id).eq("status", "active");
-  const { data: membership, error: membershipError } = await admin.from("memberships").insert({
-    user_id: user.id,
-    level_id: payment.level_id,
-    payment_id: payment.id,
-    status: "active",
-  }).select().single();
-  if (membershipError) return json({ error: membershipError.message }, 500);
-
-  const { error: linkError } = await admin.from("profiles")
-    .update({ membership_id: membership.id }).eq("id", user.id);
-  if (linkError) return json({ error: linkError.message }, 500);
-
-  await admin.from("notifications").insert({
-    user_id: user.id, type: "payment",
-    title: "Payment successful",
-    body: `Your payment of ₦${Number(payment.amount).toLocaleString()} for the ${level.name} level was verified. Reference: ${reference}.`,
+  // Complete payment state, membership replacement, referral ledger credit and
+  // notifications in one database transaction; retries return the same membership.
+  const { data: fulfillment, error: fulfillmentError } = await admin.rpc("fulfill_verified_payment", {
+    p_payment_id: payment.id,
+    p_user_id: user.id,
   });
-  await admin.from("notifications").insert({
-    user_id: user.id, type: "membership",
-    title: `${level.name} membership activated`,
-    body: `You now have access to ${level.name} tasks. Complete approved tasks to earn — membership itself does not generate income.`,
-  });
-
-  // Load commission config from platform_settings
-  const { data: platformSettingsRow } = await admin
-    .from("platform_settings")
-    .select("payload")
-    .eq("id", true)
-    .maybeSingle();
-  const commissionCfg = platformSettingsRow?.payload?.referralCommissions ?? {
-    zentraEnabled: true,
-    zentraPercent: 10,
-    membershipEnabled: true,
-    membershipFlatAmount: 500,
-  };
-
-  // Activate the referral relationship (commissions flow from real task work)
-  const { data: profileRow } = await admin.from("profiles")
-    .select("referred_by, full_name").eq("id", user.id).maybeSingle();
-  if (profileRow?.referred_by) {
-    const { data: ref } = await admin.from("referrals")
-      .select("id, status, referrer_id").eq("referred_id", user.id).maybeSingle();
-    if (ref) {
-      // Activate if still pending
-      if (ref.status === "pending") {
-        await admin.from("referrals").update({ status: "active" }).eq("id", ref.id);
-        await admin.from("notifications").insert({
-          user_id: profileRow.referred_by, type: "referral",
-          title: "Referral activated",
-          body: `${profileRow.full_name} activated a membership. You'll now earn commission on their approved task rewards.`,
-        });
-      }
-
-      // ── Membership referral commission ────────────────────────────────
-      if (commissionCfg.membershipEnabled && commissionCfg.membershipFlatAmount > 0) {
-        const commissionAmount = commissionCfg.membershipFlatAmount;
-        const commissionId = crypto.randomUUID();
-        const txRef = `EH-MEM-COMM-${Date.now().toString(36).toUpperCase()}`;
-
-        // Insert referral_commissions row (idempotent via UNIQUE(source_id, commission_type))
-        const { error: commErr } = await admin.from("referral_commissions").insert({
-          id: commissionId,
-          referral_id: ref.id,
-          referrer_id: ref.referrer_id,
-          referred_id: user.id,
-          commission_type: "membership",
-          amount: commissionAmount,
-          currency: "NGN",
-          source_id: payment.id,
-          status: "approved",
-          description: `Membership registration commission — ${profileRow.full_name} activated ${level.name}`,
-        });
-
-        if (!commErr) {
-          // Credit referrer's NGN wallet
-          await admin.from("wallet_transactions").insert({
-            id: crypto.randomUUID(),
-            user_id: ref.referrer_id,
-            type: "membership_commission",
-            direction: "credit",
-            amount: commissionAmount,
-            status: "approved",
-            description: `Membership commission — ${profileRow.full_name} activated ${level.name}`,
-            reference: txRef,
-            source_id: commissionId,
-          });
-
-          // Notify referrer
-          await admin.from("notifications").insert({
-            id: crypto.randomUUID(),
-            user_id: ref.referrer_id,
-            type: "referral",
-            title: "Membership commission earned!",
-            body: `You earned ₦${commissionAmount.toLocaleString()} — your referral ${profileRow.full_name} purchased a ${level.name} membership.`,
-            read: false,
-          });
-        }
-      }
-    }
+  if (fulfillmentError) {
+    console.error("[paystack-verify] atomic fulfillment failed:", fulfillmentError.message);
+    return json({ error: "Payment was verified but activation is temporarily delayed. Please retry or contact support." }, 500);
   }
-
-  return json({ payment: verifiedPayment, membership });
+  if (fulfillment?.error) return json({ error: fulfillment.error }, Number(fulfillment.status) || 400);
+  if (!fulfillment?.payment || !fulfillment?.membership)
+    return json({ error: "Payment fulfillment returned an incomplete result." }, 500);
+  return json({ payment: fulfillment.payment, membership: fulfillment.membership });
 });

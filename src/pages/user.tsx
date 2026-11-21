@@ -1,22 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  AlertTriangle, ArrowRight, Briefcase, CheckCircle2, ClipboardList, Clock,
-  Coins, CreditCard, Gamepad2, Hourglass, Layers, Lock, MailWarning, Play, Receipt,
-  Send, Share2, TrendingUp, Users, Wallet, Trophy, Disc3, MessageSquare,
-  History, UserPlus, Search, Medal, Crown, X, Zap,
+  AlertTriangle, ArrowRight, Briefcase, ClipboardList, Clock,
+  Coins, Gamepad2, Lock, MailWarning, Play,
+  Send, Trophy,
+  Search, Medal, Crown, X, Zap,
 } from "lucide-react";
-import { Link } from "../components/nav";
 import {
-  Badge, Button, Card, CardHeader, EmptyState, Modal, PageHead, Stat, StatusBadge,
+  Badge, Button, Card, EmptyState, Modal, PageHead, StatusBadge,
   Td, Table, Textarea, fmtDate, fmtN,
 } from "../components/ui";
 import {
   getBalances, getLevel, getMySubmissions, getTaskViews, getUserLevel,
-  getWalletTx, startTask, submitTaskProof, todaySubmissionCount,
+  startTask, submitTaskProof, todaySubmissionCount,
 } from "../lib/services";
 import { read as readDB, DEFAULT_GOLD_MINE_CONFIG } from "../lib/db";
 import type { TaskView } from "../lib/services";
-import { navigate, useAction, useData, useDBVersion, useSettings, useUser } from "../lib/store";
+import { navigate, useAction, useData, useDBVersion, useUser } from "../lib/store";
 import {
   hydrateGoldMine, completeMatureCycles, getGoldBalance,
 } from "../lib/services";
@@ -163,7 +162,6 @@ function ZentraDashCard() {
 
 export function Dashboard() {
   const user = useUser()!;
-  const s    = useSettings();
   const bal  = useData(() => getBalances(user.id));
   const level = useData(() => getUserLevel(user.id));
 

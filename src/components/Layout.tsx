@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import {
-  Bell, Briefcase, ClipboardList, CreditCard, Gauge, Headset, LayoutDashboard,
+  Bell, ClipboardList, CreditCard, Gauge, Headset, LayoutDashboard,
   LogOut, Menu, MessageSquare, Settings2, ShieldCheck, Users, Wallet, X, Zap, Coins, Receipt,
   ListChecks, FileText, User, Share2, Layers, Disc3, Trophy, Pickaxe,
 } from "lucide-react";

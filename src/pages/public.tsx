@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   ArrowRight, BadgeCheck, Check, ClipboardCheck, Coins, FileText, HelpCircle,
-  Mail, Minus, Phone, Plus, ShieldCheck, Smartphone, UserPlus, Wallet,
+  Mail, Minus, Phone, Plus, ShieldCheck, UserPlus, Wallet,
 } from "lucide-react";
 import { Link } from "../components/nav";
 import { Badge, Button, Card, Field, Input, Select, Textarea, fmtN } from "../components/ui";

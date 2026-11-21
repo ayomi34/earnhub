@@ -656,6 +656,35 @@ Deno.serve(async (req) => {
       return json({ inserted, failed, errors });
     }
 
+    /* ---------------- Zentra conversions ---------------- */
+    case "approve-gold-conversion": {
+      const conversionId = String(body.conversionId || "");
+      if (!conversionId) return json({ error: "Conversion ID is required." }, 400);
+      const { data, error } = await admin.rpc("admin_approve_gold_conversion", {
+        p_conversion_id: conversionId,
+        p_admin_id: user.id,
+      });
+      if (error) return json({ error: error.message }, 500);
+      if (data?.error) return json({ error: data.error }, Number(data.status) || 400);
+      await audit("gold.conversion.approve", conversionId);
+      return json(data);
+    }
+
+    case "reject-gold-conversion": {
+      const conversionId = String(body.conversionId || "");
+      const note = String(body.note || "").trim().slice(0, 500);
+      if (!conversionId) return json({ error: "Conversion ID is required." }, 400);
+      const { data, error } = await admin.rpc("admin_reject_gold_conversion", {
+        p_conversion_id: conversionId,
+        p_admin_id: user.id,
+        p_note: note,
+      });
+      if (error) return json({ error: error.message }, 500);
+      if (data?.error) return json({ error: data.error }, Number(data.status) || 400);
+      await audit("gold.conversion.reject", `${conversionId}${note ? ` — ${note}` : ""}`);
+      return json(data);
+    }
+
     default:
       return json({ error: "Unknown action" }, 400);
   }

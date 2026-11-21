@@ -48,8 +48,14 @@ Deno.serve(async (req) => {
 
   if (!cfg.enabled) return json({ error: "Gold Mine is currently disabled." }, 403);
 
-  const body = await req.json();
+  let body: any;
+  try { body = await req.json(); } catch { return json({ error: "Invalid JSON body." }, 400); }
   const action = body?.action as string;
+
+  const { data: profile, error: profileError } = await svc
+    .from("profiles").select("id, status").eq("id", user.id).maybeSingle();
+  if (profileError || !profile) return json({ error: "Profile not found." }, 404);
+  if (profile.status !== "active") return json({ error: "This account has been suspended." }, 403);
 
   // ── Helper: get user's active membership level ──────────────────────────
   async function getUserLevel() {
@@ -90,80 +96,38 @@ Deno.serve(async (req) => {
     if (!levelCfg) return json({ error: "Your membership level is not configured for Gold Mine cycles. Contact support." }, 400);
 
     const { cycleDays, goldReward, joinCost, maxActiveCycles } = levelCfg;
-
-    // Check active cycle count
-    const { count: activeCycleCount } = await svc
-      .from("gold_mine_cycles")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", user.id)
-      .eq("status", "active");
-
-    if ((activeCycleCount ?? 0) >= maxActiveCycles) {
-      return json({ error: `You already have ${activeCycleCount} active cycle(s). Wait for one to complete before joining another.` }, 400);
+    if (![cycleDays, goldReward, joinCost, maxActiveCycles].every(Number.isFinite) ||
+        cycleDays < 1 || goldReward < 1 || joinCost < 0 || maxActiveCycles < 1) {
+      return json({ error: "Gold Mine level configuration is invalid. Contact support." }, 500);
     }
-
-    // Deduct join cost from wallet if applicable
-    if (joinCost > 0) {
-      // Compute available balance
-      const { data: credits } = await svc
-        .from("wallet_transactions")
-        .select("amount")
-        .eq("user_id", user.id)
-        .eq("direction", "credit")
-        .eq("status", "approved");
-      const { data: debits } = await svc
-        .from("wallet_transactions")
-        .select("amount")
-        .eq("user_id", user.id)
-        .eq("direction", "debit")
-        .neq("status", "rejected");
-
-      const totalCredit = (credits ?? []).reduce((s: number, r: { amount: number }) => s + r.amount, 0);
-      const totalDebit  = (debits  ?? []).reduce((s: number, r: { amount: number }) => s + r.amount, 0);
-      const available = totalCredit - totalDebit;
-
-      if (available < joinCost) {
-        return json({ error: `Insufficient wallet balance. You need ₦${joinCost} to join this cycle but your balance is ₦${available}.` }, 400);
-      }
-
-      const txId  = crypto.randomUUID();
-      const txRef = `EH-GM-JOIN-${Date.now().toString(36).toUpperCase()}`;
-      const { error: txErr } = await svc.from("wallet_transactions").insert({
-        id: txId, user_id: user.id, type: "gold_mine_join",
-        direction: "debit", amount: joinCost, status: "approved",
-        description: `Gold Mine cycle join fee (${cycleDays}-day cycle)`,
-        reference: txRef, source_id: txId,
-      });
-      if (txErr) return json({ error: `Could not deduct join fee: ${txErr.message}` }, 500);
+    const requestId = typeof body.requestId === "string" &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.requestId)
+      ? body.requestId : crypto.randomUUID();
+    const { data: cycle, error: joinError } = await svc.rpc("join_gold_mine_cycle", {
+      p_user_id: user.id,
+      p_level_id: levelId,
+      p_cycle_days: Math.floor(cycleDays),
+      p_gold_reward: Math.floor(goldReward),
+      p_join_cost: Math.floor(joinCost),
+      p_max_active_cycles: Math.floor(maxActiveCycles),
+      p_request_id: requestId,
+    });
+    if (joinError) {
+      console.error("[gold-mine] atomic join failed:", joinError.message);
+      return json({ error: "Could not securely join this cycle. Please try again." }, 500);
     }
+    if (cycle?.error) return json({ error: cycle.error }, Number(cycle.status) || 400);
 
-    const now = new Date();
-    const endsAt = new Date(now.getTime() + cycleDays * 24 * 60 * 60 * 1000);
-    const cycleId = crypto.randomUUID();
-
-    const { data: cycle, error: cycleErr } = await svc.from("gold_mine_cycles").insert({
-      id: cycleId,
-      user_id: user.id,
-      level_id: levelId,
-      gold_reward: goldReward,
-      join_cost: joinCost,
-      status: "active",
-      started_at: now.toISOString(),
-      ends_at: endsAt.toISOString(),
-      gold_credited: false,
-    }).select().maybeSingle();
-
-    if (cycleErr) return json({ error: `Failed to create cycle: ${cycleErr.message}` }, 500);
-
-    // Notification
+    const createdCycle = cycle?.cycle;
+    if (!createdCycle) return json({ error: "Failed to create cycle." }, 500);
+    const endsAt = new Date(createdCycle.ends_at);
     await svc.from("notifications").insert({
       id: crypto.randomUUID(), user_id: user.id, type: "system",
       title: "Gold Mine cycle started",
       body: `Your ${cycleDays}-day Gold Mine cycle has begun. You'll earn ${goldReward} gold coins when it completes on ${endsAt.toLocaleDateString("en-NG")}.`,
       read: false,
     });
-
-    return json({ cycle });
+    return json({ cycle: createdCycle });
   }
 
   // ── complete-cycles ───────────────────────────────────────────────────────
@@ -209,12 +173,16 @@ Deno.serve(async (req) => {
 
     const completed: unknown[] = [];
     for (const cycle of matured ?? []) {
-      const { error: updErr } = await svc
+      const { data: claimedCycle, error: updErr } = await svc
         .from("gold_mine_cycles")
         .update({ status: "completed", completed_at: new Date().toISOString(), gold_credited: true })
-        .eq("id", cycle.id);
-      if (!updErr) {
-        completed.push(cycle);
+        .eq("id", cycle.id)
+        .eq("status", "active")
+        .eq("gold_credited", false)
+        .select()
+        .maybeSingle();
+      if (!updErr && claimedCycle) {
+        completed.push(claimedCycle);
         await svc.from("notifications").insert({
           id: crypto.randomUUID(), user_id: user.id, type: "system",
           title: "Gold Mine cycle completed!",
@@ -269,55 +237,33 @@ Deno.serve(async (req) => {
       return json({ error: `Minimum conversion is ${cfg.minConversionGold} gold coins.` }, 400);
     }
 
-    // Check gold balance
-    const balance = await getGoldBalance(user.id);
-    if (balance < goldAmount) {
-      return json({ error: `Insufficient gold balance. You have ${balance} gold coins but requested ${goldAmount}.` }, 400);
+    const rate = Number(cfg.goldToCashRate);
+    const feePercent = Number(cfg.conversionFeePercent);
+    const maxDailyConversions = Number(cfg.maxDailyConversions);
+    if (!Number.isFinite(rate) || rate <= 0 || !Number.isFinite(feePercent) || feePercent < 0 || feePercent >= 100 ||
+        !Number.isFinite(maxDailyConversions) || maxDailyConversions < 0) {
+      return json({ error: "Gold Mine conversion configuration is invalid. Contact support." }, 500);
     }
-
-    const grossCash = goldAmount * cfg.goldToCashRate;
-    const feeAmount = Math.floor(grossCash * cfg.conversionFeePercent / 100);
-    const cashAmount = grossCash - feeAmount;
-
-    const reference = `EH-GM-CONV-${Date.now().toString(36).toUpperCase()}${crypto.randomUUID().slice(0, 6).toUpperCase()}`;
-
-    const conversionId = crypto.randomUUID();
-    const { data: conversion, error: convErr } = await svc.from("gold_mine_conversions").insert({
-      id: conversionId,
-      user_id: user.id,
-      gold_amount: goldAmount,
-      cash_amount: cashAmount,
-      fee_amount: feeAmount,
-      status: "approved",
-      reference,
-    }).select().maybeSingle();
-
-    if (convErr) return json({ error: `Failed to submit conversion: ${convErr.message}` }, 500);
-
-    // Auto-approve: credit the cash amount to the user's NGN wallet immediately
-    const walletTxId = crypto.randomUUID();
-    const walletTxRef = `EH-GM-CASH-${Date.now().toString(36).toUpperCase()}`;
-    const { data: walletTx } = await svc.from("wallet_transactions").insert({
-      id: walletTxId,
-      user_id: user.id,
-      type: "gold_conversion",
-      direction: "credit",
-      amount: cashAmount,
-      status: "approved",
-      description: `Gold conversion — ${goldAmount} ZNTR → ₦${cashAmount.toLocaleString()} (${cfg.conversionFeePercent}% fee applied)`,
-      reference: walletTxRef,
-      source_id: conversionId,
-    }).select().maybeSingle();
-
-    await svc.from("notifications").insert({
-      id: crypto.randomUUID(), user_id: user.id, type: "system",
-      title: "Gold conversion approved!",
-      body: `Your ${goldAmount} ZNTR has been converted to ₦${cashAmount.toLocaleString()} and credited to your wallet.`,
-      read: false,
+    const requestId = typeof body.requestId === "string" &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.requestId)
+      ? body.requestId : crypto.randomUUID();
+    const { data: result, error: conversionError } = await svc.rpc("request_gold_conversion", {
+      p_user_id: user.id,
+      p_gold_amount: goldAmount,
+      p_gold_to_cash_rate: rate,
+      p_fee_percent: feePercent,
+      p_min_conversion_gold: Math.max(1, Math.floor(Number(cfg.minConversionGold) || 1)),
+      p_max_daily_conversions: Math.floor(maxDailyConversions),
+      p_request_id: requestId,
     });
-
-    const newBalance = await getGoldBalance(user.id);
-    return json({ conversion, walletTx, goldBalance: newBalance });
+    if (conversionError) {
+      console.error("[gold-mine] atomic conversion failed:", conversionError.message);
+      return json({ error: "Could not securely complete this conversion. Please try again." }, 500);
+    }
+    if (result?.error) return json({ error: result.error }, Number(result.status) || 400);
+    if (!result?.conversion)
+      return json({ error: "Conversion could not be recorded. Please contact support." }, 500);
+    return json(result);
   }
 
   return json({ error: "Unknown action" }, 400);
