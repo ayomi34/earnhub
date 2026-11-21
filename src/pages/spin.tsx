@@ -86,10 +86,7 @@ export function SpinPage() {
   }
 
   return (
-    <div
-      className="mx-auto max-w-6xl space-y-5 pb-12 text-slate-900"
-      style={{ fontFamily: "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}
-    >
+    <div className="mx-auto max-w-6xl space-y-5 pb-12 text-slate-900">
       <header className="pb-1">
         <h1 className="text-[26px] font-semibold leading-tight tracking-[-0.025em] text-slate-900 sm:text-[30px]">Daily Spin</h1>
         <p className="mt-1.5 max-w-2xl text-sm leading-6 text-slate-600">Try the wheel once every 24 hours. Cash rewards are added to your account when you win.</p>
