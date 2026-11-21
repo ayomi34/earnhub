@@ -388,12 +388,12 @@ export function TermsPage() {
     [
       "5. Earnings and wallet",
       [
-        "Wallet credit is generated exclusively from: (a) task rewards for submissions approved through manual review, (b) single-level referral commissions on approved task rewards of your direct referrals, (c) Zentra (ZNTR) gold-coin commissions when your direct referrals complete Gold Mine cycles, and (d) membership registration commissions when your direct referrals purchase and activate a membership.",
+        "Wallet credit is generated exclusively from: (a) task rewards for submissions approved through manual review, (b) single-level referral commissions on approved task rewards of your direct referrals, (c) Zentra (ZNTR) gold-coin commissions when your direct referrals complete Zentra cycles, and (d) membership registration commissions when your direct referrals purchase and activate a membership.",
         "Referral commissions apply only to direct referrals (one level). There are no multi-level or network commissions.",
         "Task reward rates are set by the Platform and may change without notice. Rates displayed at the time of submission apply to that submission.",
         "The Platform may reject any submission that does not meet stated requirements. Rejected work earns nothing. Review decisions are final, subject to a one-time support appeal.",
         "Wallet balances are computed from the live ledger. The Platform does not hold fiat currency on your behalf; balances represent an amount available for withdrawal, not a bank deposit.",
-        "ZNTR gold coins are an in-platform unit only. They have no monetary value outside the Platform and cannot be transferred, sold, or exchanged except through the Platform's Gold Mine conversion feature.",
+        "ZNTR gold coins are an in-platform unit only. They have no monetary value outside the Platform and cannot be transferred, sold, or exchanged except through the Platform's Zentra conversion feature.",
       ],
     ],
     [
@@ -416,8 +416,8 @@ export function TermsPage() {
       ],
     ],
     [
-      "8. Gold Mine feature",
-      `The Gold Mine feature allows members to run timed cycles that credit ZNTR gold coins on completion. ZNTR coins may be converted to NGN at the Platform's published rate, subject to a conversion fee, minimum balance, and daily conversion limit. Conversion requests are subject to admin approval. The Platform may adjust Gold Mine parameters, rates, and availability at any time without prior notice.`,
+      "8. Zentra feature",
+      `The Zentra feature allows members to run timed cycles that credit ZNTR gold coins on completion. ZNTR coins may be converted to NGN at the Platform's published rate, subject to a conversion fee, minimum balance, and daily conversion limit. Conversion requests are subject to admin approval. The Platform may adjust Zentra parameters, rates, and availability at any time without prior notice.`,
     ],
     [
       "9. Intellectual property",

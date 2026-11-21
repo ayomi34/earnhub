@@ -826,10 +826,10 @@ begin
   select * into v_cycle from public.gold_mine_cycles where user_id=p_user_id and request_id=p_request_id;
   if found then return jsonb_build_object('cycle',to_jsonb(v_cycle)); end if;
   if not exists (select 1 from public.memberships where user_id=p_user_id and level_id=p_level_id and status='active') then
-    return jsonb_build_object('error','An active membership is required to join a Gold Mine cycle.','status',403);
+    return jsonb_build_object('error','An active membership is required to join a Zentra cycle.','status',403);
   end if;
   if p_cycle_days < 1 or p_cycle_days > 365 or p_gold_reward < 1 or p_join_cost < 0 or p_max_active_cycles < 1 then
-    return jsonb_build_object('error','Gold Mine cycle configuration is invalid.','status',400);
+    return jsonb_build_object('error','Zentra cycle configuration is invalid.','status',400);
   end if;
   select count(*) into v_active from public.gold_mine_cycles where user_id=p_user_id and status='active';
   if v_active >= p_max_active_cycles then
@@ -845,7 +845,7 @@ begin
   if p_join_cost > 0 then
     insert into public.wallet_transactions(user_id,type,direction,amount,status,description,reference,source_id)
       values (p_user_id,'gold_mine_join','debit',p_join_cost,'approved',
-        format('Gold Mine cycle join fee (%s-day cycle)',p_cycle_days),
+        format('Zentra cycle join fee (%s-day cycle)',p_cycle_days),
         'EH-GM-JOIN-' || upper(substr(replace(v_cycle_id::text,'-',''),1,20)),v_cycle_id::text);
   end if;
   insert into public.gold_mine_cycles(id,user_id,level_id,gold_reward,join_cost,status,started_at,ends_at,gold_credited,request_id)

@@ -1369,7 +1369,7 @@ export async function adminSaveSettings(adminId: string, s: Settings) {
   await hydrateAll();
 }
 
-/* ================= GOLD MINE ================= */
+/* ================= ZENTRA ================= */
 
 function mapGoldMineCycle(row: any): GoldMineCycle {
   return {
@@ -1417,7 +1417,7 @@ function mapReferralCommission(r: any): ReferralCommission {
   };
 }
 
-/** Hydrate the current user's gold mine data from Supabase. */
+/** Hydrate the current user's Zentra data from Supabase. */
 export async function hydrateGoldMine(userId: string) {
   const [{ data: cycles }, { data: conversions }, { data: commissions }] = await Promise.all([
     supabase.from("gold_mine_cycles").select("*").eq("user_id", userId).order("created_at", { ascending: false }),
@@ -1464,7 +1464,7 @@ export function getGoldBalance(userId: string): number {
   return Math.max(0, cycleEarned + commissionEarned - spent);
 }
 
-/** Join a new gold mine cycle (calls edge function). */
+/** Join a new Zentra cycle (calls edge function). */
 export async function joinGoldMineCycle(): Promise<GoldMineCycle> {
   const { data, error } = await supabase.functions.invoke("gold-mine", {
     body: { action: "join-cycle", requestId: crypto.randomUUID() },
@@ -1486,7 +1486,7 @@ export async function joinGoldMineCycle(): Promise<GoldMineCycle> {
   return cycle;
 }
 
-/** Process matured cycles for the current user. Call on Gold Mine page load. */
+/** Process matured cycles for the current user. Call on Zentra page load. */
 export async function completeMatureCycles(userId: string): Promise<GoldMineCycle[]> {
   const { data, error } = await supabase.functions.invoke("gold-mine", {
     body: { action: "complete-cycles" },
@@ -1531,7 +1531,7 @@ export async function requestGoldConversion(goldAmount: number): Promise<GoldMin
   return conv;
 }
 
-/** Admin: get all gold mine cycles across all users. */
+/** Admin: get all Zentra cycles across all users. */
 export async function adminGetAllGoldMineCycles(adminId: string): Promise<GoldMineCycle[]> {
   requireAdmin(adminId);
   const { data } = await supabase.from("gold_mine_cycles").select("*").order("created_at", { ascending: false });

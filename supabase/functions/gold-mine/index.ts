@@ -1,8 +1,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-/* EarnHub Gold Mine edge function.
+/* EarnHub Zentra edge function.
  * Handles three actions:
- *   join-cycle       — user joins a gold mine cycle (deducts join cost, creates cycle row)
+ *   join-cycle       — user joins a Zentra cycle (deducts join cost, creates cycle row)
  *   complete-cycles  — marks mature cycles as completed and credits gold
  *   request-conversion — user requests gold-to-cash conversion
  *
@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
     levelConfigs: [],
   };
 
-  if (!cfg.enabled) return json({ error: "Gold Mine is currently disabled." }, 403);
+  if (!cfg.enabled) return json({ error: "Zentra is currently disabled." }, 403);
 
   let body: any;
   try { body = await req.json(); } catch { return json({ error: "Invalid JSON body." }, 400); }
@@ -90,15 +90,15 @@ Deno.serve(async (req) => {
   // ── join-cycle ────────────────────────────────────────────────────────────
   if (action === "join-cycle") {
     const levelId = await getUserLevel();
-    if (!levelId) return json({ error: "An active membership is required to join a Gold Mine cycle." }, 400);
+    if (!levelId) return json({ error: "An active membership is required to join a Zentra cycle." }, 400);
 
     const levelCfg = cfg.levelConfigs?.find((lc: { levelId: string }) => lc.levelId === levelId);
-    if (!levelCfg) return json({ error: "Your membership level is not configured for Gold Mine cycles. Contact support." }, 400);
+    if (!levelCfg) return json({ error: "Your membership level is not configured for Zentra cycles. Contact support." }, 400);
 
     const { cycleDays, goldReward, joinCost, maxActiveCycles } = levelCfg;
     if (![cycleDays, goldReward, joinCost, maxActiveCycles].every(Number.isFinite) ||
         cycleDays < 1 || goldReward < 1 || joinCost < 0 || maxActiveCycles < 1) {
-      return json({ error: "Gold Mine level configuration is invalid. Contact support." }, 500);
+      return json({ error: "Zentra level configuration is invalid. Contact support." }, 500);
     }
     const requestId = typeof body.requestId === "string" &&
       /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.requestId)
@@ -123,8 +123,8 @@ Deno.serve(async (req) => {
     const endsAt = new Date(createdCycle.ends_at);
     await svc.from("notifications").insert({
       id: crypto.randomUUID(), user_id: user.id, type: "system",
-      title: "Gold Mine cycle started",
-      body: `Your ${cycleDays}-day Gold Mine cycle has begun. You'll earn ${goldReward} gold coins when it completes on ${endsAt.toLocaleDateString("en-NG")}.`,
+      title: "Zentra cycle started",
+      body: `Your ${cycleDays}-day Zentra cycle has begun. You'll earn ${goldReward} gold coins when it completes on ${endsAt.toLocaleDateString("en-NG")}.`,
       read: false,
     });
     return json({ cycle: createdCycle });
@@ -185,7 +185,7 @@ Deno.serve(async (req) => {
         completed.push(claimedCycle);
         await svc.from("notifications").insert({
           id: crypto.randomUUID(), user_id: user.id, type: "system",
-          title: "Gold Mine cycle completed!",
+          title: "Zentra cycle completed!",
           body: `Your ${cycle.gold_reward}-gold cycle has completed. The coins have been added to your Gold balance.`,
           read: false,
         });
@@ -214,7 +214,7 @@ Deno.serve(async (req) => {
                 user_id: referralRow.referrer_id,
                 type: "referral",
                 title: "Zentra commission earned!",
-                body: `You earned ${commissionAmount} ZNTR as a referral commission — your referral completed a Gold Mine cycle.`,
+                body: `You earned ${commissionAmount} ZNTR as a referral commission — your referral completed a Zentra cycle.`,
                 read: false,
               });
             }
@@ -242,7 +242,7 @@ Deno.serve(async (req) => {
     const maxDailyConversions = Number(cfg.maxDailyConversions);
     if (!Number.isFinite(rate) || rate <= 0 || !Number.isFinite(feePercent) || feePercent < 0 || feePercent >= 100 ||
         !Number.isFinite(maxDailyConversions) || maxDailyConversions < 0) {
-      return json({ error: "Gold Mine conversion configuration is invalid. Contact support." }, 500);
+      return json({ error: "Zentra conversion configuration is invalid. Contact support." }, 500);
     }
     const requestId = typeof body.requestId === "string" &&
       /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(body.requestId)

@@ -11,7 +11,7 @@ const dailySpin = read("supabase/functions/daily-spin/index.ts");
 const paymentVerification = read("supabase/functions/paystack-verify/index.ts");
 const clientServices = read("src/lib/services.ts");
 
-test("fresh-install and upgrade SQL define Gold Mine data and safe reads", () => {
+test("fresh-install and upgrade SQL define Zentra data and safe reads", () => {
   for (const sql of [schema, migration, hardening]) {
     assert.match(sql, /create table if not exists public\.gold_mine_cycles/i);
     assert.match(sql, /create table if not exists public\.gold_mine_conversions/i);
@@ -20,7 +20,7 @@ test("fresh-install and upgrade SQL define Gold Mine data and safe reads", () =>
   }
 });
 
-test("Gold Mine debits, cycle creation and cash conversions use atomic database RPCs", () => {
+test("Zentra debits, cycle creation and cash conversions use atomic database RPCs", () => {
   assert.match(goldMine, /rpc\("join_gold_mine_cycle"/);
   assert.match(goldMine, /rpc\("request_gold_conversion"/);
   assert.doesNotMatch(goldMine, /from\("wallet_transactions"\)\.insert/);

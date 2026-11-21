@@ -291,7 +291,7 @@ export interface FeudGameSession {
   rounds: FeudRoundAnswerRecord[];
 }
 
-/* ================= GOLD MINE ================= */
+/* ================= ZENTRA ================= */
 
 export type GoldMineCycleStatus = "active" | "completed" | "cancelled";
 export type GoldMineConversionStatus = "pending" | "approved" | "rejected";

@@ -383,7 +383,7 @@ export function AdminSettings() {
                 onChange={(e) => setS({ ...s, referralCommissions: { ...(s.referralCommissions ?? { zentraEnabled: true, zentraPercent: 10, membershipEnabled: true, membershipFlatAmount: 500 }), zentraPercent: Number(e.target.value) } })}
               />
             </Field>
-            <p className="mt-2 text-xs text-slate-400">Triggers when a referred user completes a Gold Mine cycle. Commission is credited to referrer's ZNTR balance.</p>
+            <p className="mt-2 text-xs text-slate-400">Triggers when a referred user completes a Zentra cycle. Commission is credited to referrer's ZNTR balance.</p>
           </div>
 
           {/* Membership registration commission */}
